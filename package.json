@@ -1,19 +1,24 @@
 {
-  "name": "mizumi",
-  "version": "1.0.0",
-  "description": "",
+  "name": "@mizumi25/all",
+  "version": "0.1.0",
+  "description": "All Mizumi packages in one install",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "directories": {
-    "example": "examples"
-  },
+  "keywords": ["mizumi", "css", "cli", "vite", "postcss", "gsap"],
+  "author": "Mizumi Kaito / James Rafty Damasing Libago",
+  "license": "MIT",
   "dependencies": {
-    "chokidar": "^5.0.0"
+    "@mizumi25/core": "^0.1.0",
+    "@mizumi25/cli": "^0.1.0",
+    "@mizumi25/vite-plugin": "^0.1.0",
+    "@mizumi25/postcss-plugin": "^0.1.0",
+    "@mizumi25/gsap": "^0.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mizumi25/MizumiPackage"
   }
 }
