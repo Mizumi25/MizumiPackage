@@ -1,3 +1,5 @@
+# Mizumi generated files
+.mizumi/
 node_modules/
 dist/
 .env
