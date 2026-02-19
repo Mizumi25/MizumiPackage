@@ -1,0 +1,10 @@
+{
+  "name": "@mizumi/core",
+  "version": "0.1.0",
+  "description": "Mizumi core engine",
+  "main": "index.js",
+  "type": "module",
+  "keywords": ["css", "design-tokens", "gsap", "animations"],
+  "author": "Mizumi Kaito / James Rafty Damasing Libago",
+  "license": "MIT"
+}

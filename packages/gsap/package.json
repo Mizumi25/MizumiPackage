@@ -1,0 +1,8 @@
+{
+  "name": "@mizumi/gsap",
+  "version": "0.1.0",
+  "description": "GSAP engine for Mizumi",
+  "main": "index.js",
+  "type": "module",
+  "license": "MIT"
+}

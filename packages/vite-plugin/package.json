@@ -1,0 +1,12 @@
+{
+  "name": "@mizumi/vite-plugin",
+  "version": "0.1.0",
+  "description": "Vite plugin for Mizumi CSS framework",
+  "main": "index.js",
+  "keywords": ["vite", "vite-plugin", "mizumi", "css", "gsap"],
+  "author": "Your Name",
+  "license": "MIT",
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^4.0.0"
+  }
+}

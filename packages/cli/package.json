@@ -1,0 +1,11 @@
+{
+  "name": "@mizumi/cli",
+  "version": "0.1.0",
+  "description": "Mizumi CLI tools",
+  "main": "index.js",
+  "bin": {
+    "mizumi": "./index.js"
+  },
+  "type": "module",
+  "license": "MIT"
+}
