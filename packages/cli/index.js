@@ -250,12 +250,13 @@ export {
   }
 
   // Load config
+  const configModule = await import(pathToFileURL(configPath).href);
+const config = configModule.default || configModule;  // ← handles both ESM and CommonJS
+
+// Generate CSS + Runtime JS
+const mizumi  = new Mizumi(config);
   
-const config = await import(pathToFileURL(configPath).href);
 
-
-  // Generate CSS + Runtime JS
-  const mizumi  = new Mizumi(config);
   const outDir  = path.join(process.cwd(), '.mizumi');
   mizumi.build(outDir); // ← now passes directory, not file path
 
@@ -282,10 +283,12 @@ const config = await import(pathToFileURL(configPath).href);
     }
 
     
-const config = await import(pathToFileURL(configPath).href);
+const configModule = await import(pathToFileURL(configPath).href);
+const config = configModule.default || configModule;  // ← handles both ESM and CommonJS
 
-    const mizumi = new Mizumi(config);
-
+// Generate CSS + Runtime JS
+const mizumi  = new Mizumi(config);
+  
     console.log('\n🌊 Mizumi Patterns:\n');
 
     for (const [name, value] of Object.entries(config.patterns || {})) {
@@ -319,7 +322,8 @@ const config = await import(pathToFileURL(configPath).href);
 
     const configPath = path.join(process.cwd(), 'mizumi.config.js');
     
-const config = await import(pathToFileURL(configPath).href);
+const configModule = await import(pathToFileURL(configPath).href);
+const config = configModule.default || configModule;
 
     const mizumi = new Mizumi(config);
 
@@ -387,7 +391,8 @@ Examples:
       process.exit(1);
     }
     
-const config = await import(pathToFileURL(cfgPath).href);
+const configModule = await import(pathToFileURL(cfgPath).href);
+const config = configModule.default || configModule;
 
     const generator = new DocsGenerator(config);
     const html      = generator.generate();
