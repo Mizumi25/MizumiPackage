@@ -1,5 +1,5 @@
 {
-  "name": "@mizumi/gsap",
+  "name": "@mizumi25/gsap",
   "version": "0.1.0",
   "description": "GSAP animation engine for Mizumi",
   "type": "module",

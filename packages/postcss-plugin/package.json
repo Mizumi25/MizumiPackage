@@ -1,5 +1,5 @@
 {
-  "name": "@mizumi/postcss-plugin",
+  "name": "@mizumi25/postcss-plugin",
   "version": "0.1.0",
   "description": "PostCSS plugin for Mizumi CSS framework",
   "type": "module",
