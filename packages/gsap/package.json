@@ -1,8 +1,14 @@
 {
   "name": "@mizumi/gsap",
   "version": "0.1.0",
-  "description": "GSAP engine for Mizumi",
-  "main": "index.js",
+  "description": "GSAP animation engine for Mizumi",
   "type": "module",
-  "license": "MIT"
+  "main": "index.js",
+  "keywords": ["gsap", "animations", "mizumi"],
+  "author": "Mizumi Kaito / James Rafty Damasing Libago",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mizumi25/MizumiPackage"
+  }
 }

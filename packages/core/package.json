@@ -1,10 +1,17 @@
 {
   "name": "@mizumi/core",
   "version": "0.1.0",
-  "description": "Mizumi core engine",
-  "main": "index.js",
+  "description": "Design-token-first CSS framework core engine",
   "type": "module",
-  "keywords": ["css", "design-tokens", "gsap", "animations"],
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "keywords": ["css", "design-tokens", "gsap", "animations", "framework"],
   "author": "Mizumi Kaito / James Rafty Damasing Libago",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mizumi25/MizumiPackage"
+  }
 }

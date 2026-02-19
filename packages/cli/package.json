@@ -1,11 +1,20 @@
 {
   "name": "@mizumi/cli",
   "version": "0.1.0",
-  "description": "Mizumi CLI tools",
+  "description": "CLI for Mizumi CSS framework",
+  "type": "module",
   "main": "index.js",
   "bin": {
     "mizumi": "./index.js"
   },
-  "type": "module",
-  "license": "MIT"
+  "keywords": ["cli", "mizumi", "css", "design-tokens"],
+  "author": "Mizumi Kaito / James Rafty Damasing Libago",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mizumi25/MizumiPackage"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3"
+  }
 }
