@@ -1,0 +1,21 @@
+{
+  "name": "@mizumi/postcss-plugin",
+  "version": "0.1.0",
+  "description": "PostCSS plugin for Mizumi CSS framework",
+  "type": "module",
+  "main": "index.js",
+  "keywords": [
+    "postcss",
+    "postcss-plugin",
+    "mizumi",
+    "css"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "peerDependencies": {
+    "postcss": "^8.5.6"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

@@ -1,0 +1,9 @@
+/* Your custom styles */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.custom-class {
+  color: blue;
+}
