@@ -2,7 +2,7 @@ import React from 'react'
 
 function App() {
   return (
-    <div style={{fontFamily: 'sans-serif', background: '#F9FAFB', minHeight: '100vh'}}>
+    <div style={{fontFamily: 'sans-serif', background: '#F9FAFB', minHeight: '5000px'}}>
       
       {/* Entrance animation */}
       <div className="card animate-fade-in" style={{margin: '40px auto', maxWidth: '400px'}}>
@@ -79,6 +79,43 @@ function App() {
           <span className="hidden md:block" style={{color:'green'}}>DESKTOP (768px+)</span>
         </p>
       </div>
+      
+      
+      {/* Scroll entrance — fades in when top of element hits 80% of viewport */}
+<div className="scroll-fade-in{start:top_80%}">
+  Hello scroll world
+</div>
+
+{/* Scrub — tied directly to scroll position */}
+<div className="scroll-scrub{from:opacity_0_y_100,to:opacity_1_y_0,start:top_bottom,end:center_center,scrub:1}">
+  I follow your scroll
+</div>
+
+{/* Pin — stays fixed for 500px of scroll */}
+<div className="scroll-pin{start:top_top,end:+=500px}">
+  <div className="scroll-fade-in{start:top_80%}">Chapter 1</div>
+  <div className="scroll-fade-in{start:center_center}">Chapter 2</div>
+</div>
+
+{/* Targeting — hover parent, lift child */}
+<div className="card hover-lift{>.card-body}">
+  <div className="card-body">I lift when parent is hovered</div>
+</div>
+
+{/* Prop values */}
+<div className="pad{xl} mar-x{lg} rounded{full}">
+  Token-driven inline props
+</div>
+
+{/* Animation with overrides */}
+<div className="animate-fade-in{duration:2,ease:bouncy}">
+  Slow bouncy fade
+</div>
+
+{/* Debug — add markers:true to see ScrollTrigger positions */}
+<div className="scroll-scrub{start:top_bottom,end:center_center,scrub:1,markers:true}">
+  Debug mode
+</div>
 
     </div>
   )
