@@ -1,5 +1,5 @@
 // mizumi.config.js
-module.exports = {
+export default {
   tokens: {
     colors: {
       primary: {

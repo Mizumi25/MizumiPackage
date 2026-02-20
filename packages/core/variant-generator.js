@@ -1,5 +1,7 @@
 // packages/core/variant-generator.js
 
+import { getAllUtilities } from './class-resolver.js'
+
 export class VariantGenerator {
   constructor(config) {
     this.rules = config.rules || {};
@@ -18,116 +20,11 @@ export class VariantGenerator {
   }
 
   /**
-   * Generate ALL utility class CSS (token-based + static)
+   * Generate ALL utility class CSS (token-based)
    * We need this to generate responsive/state variants of them
    */
   getAllUtilityCSS(patternExpander) {
-    const utilities = [];
-
-    // Token-based utilities
-    if (this.tokens.colors) {
-      for (const [k, v] of Object.entries(this.tokens.colors)) {
-        if (typeof v === 'object') {
-          for (const [shade] of Object.entries(v)) {
-            const s = shade === 'DEFAULT' ? '' : `-${shade}`;
-            utilities.push({ class: `bg-${k}${s}`,     css: `background-color: var(--color-${k}${s});` });
-            utilities.push({ class: `color-${k}${s}`,  css: `color: var(--color-${k}${s});` });
-            utilities.push({ class: `border-${k}${s}`, css: `border-color: var(--color-${k}${s});` });
-          }
-        } else {
-          utilities.push({ class: `bg-${k}`,     css: `background-color: var(--color-${k});` });
-          utilities.push({ class: `color-${k}`,  css: `color: var(--color-${k});` });
-          utilities.push({ class: `border-${k}`, css: `border-color: var(--color-${k});` });
-        }
-      }
-    }
-
-    if (this.tokens.spacing) {
-      for (const [k] of Object.entries(this.tokens.spacing)) {
-        utilities.push({ class: `pad-${k}`,   css: `padding: var(--spacing-${k});` });
-        utilities.push({ class: `pad-x-${k}`, css: `padding-left: var(--spacing-${k}); padding-right: var(--spacing-${k});` });
-        utilities.push({ class: `pad-y-${k}`, css: `padding-top: var(--spacing-${k}); padding-bottom: var(--spacing-${k});` });
-        utilities.push({ class: `mar-${k}`,   css: `margin: var(--spacing-${k});` });
-        utilities.push({ class: `mar-x-${k}`, css: `margin-left: var(--spacing-${k}); margin-right: var(--spacing-${k});` });
-        utilities.push({ class: `mar-y-${k}`, css: `margin-top: var(--spacing-${k}); margin-bottom: var(--spacing-${k});` });
-        utilities.push({ class: `gap-${k}`,   css: `gap: var(--spacing-${k});` });
-      }
-    }
-
-    if (this.tokens.radius) {
-      for (const [k] of Object.entries(this.tokens.radius)) {
-        utilities.push({ class: `rounded-${k}`, css: `border-radius: var(--radius-${k});` });
-      }
-    }
-
-    if (this.tokens.shadows) {
-      for (const [k] of Object.entries(this.tokens.shadows)) {
-        utilities.push({ class: `shadow-${k}`, css: `box-shadow: var(--shadow-${k});` });
-      }
-    }
-
-    if (this.tokens.typography) {
-      for (const [k] of Object.entries(this.tokens.typography)) {
-        utilities.push({
-          class: `text-${k}`,
-          css: `font-size: var(--text-${k}-size); font-weight: var(--text-${k}-weight); line-height: var(--text-${k}-line);`
-        });
-      }
-    }
-
-    // Static utilities
-    const statics = [
-      { class: 'flex',            css: 'display: flex;' },
-      { class: 'flex-col',        css: 'flex-direction: column;' },
-      { class: 'flex-wrap',       css: 'flex-wrap: wrap;' },
-      { class: 'items-center',    css: 'align-items: center;' },
-      { class: 'items-start',     css: 'align-items: flex-start;' },
-      { class: 'items-end',       css: 'align-items: flex-end;' },
-      { class: 'justify-center',  css: 'justify-content: center;' },
-      { class: 'justify-between', css: 'justify-content: space-between;' },
-      { class: 'justify-start',   css: 'justify-content: flex-start;' },
-      { class: 'justify-end',     css: 'justify-content: flex-end;' },
-      { class: 'inline-flex',     css: 'display: inline-flex;' },
-      { class: 'grid',            css: 'display: grid;' },
-      { class: 'block',           css: 'display: block;' },
-      { class: 'hidden',          css: 'display: none;' },
-      { class: 'relative',        css: 'position: relative;' },
-      { class: 'absolute',        css: 'position: absolute;' },
-      { class: 'fixed',           css: 'position: fixed;' },
-      { class: 'sticky',          css: 'position: sticky; top: 0;' },
-      { class: 'w-full',          css: 'width: 100%;' },
-      { class: 'h-full',          css: 'height: 100%;' },
-      { class: 'min-h-screen',    css: 'min-height: 100vh;' },
-      { class: 'mx-auto',         css: 'margin-left: auto; margin-right: auto;' },
-      { class: 'cursor-pointer',  css: 'cursor: pointer;' },
-      { class: 'overflow-hidden', css: 'overflow: hidden;' },
-      { class: 'transition',      css: 'transition: all 0.3s ease;' },
-      { class: 'text-center',     css: 'text-align: center;' },
-      { class: 'font-bold',       css: 'font-weight: 700;' },
-      { class: 'font-medium',     css: 'font-weight: 500;' },
-      { class: 'border',          css: 'border-width: 1px; border-style: solid;' },
-      { class: 'opacity-0',       css: 'opacity: 0;' },
-      { class: 'opacity-50',      css: 'opacity: 0.5;' },
-      { class: 'opacity-100',     css: 'opacity: 1;' },
-    ];
-
-    utilities.push(...statics);
-
-    // Also include patterns as utilities
-    for (const [name] of Object.entries(this.patterns)) {
-      const expanded = patternExpander.expand(name);
-      if (!expanded) continue;
-      const cssProps = [];
-      for (const cls of expanded.split(' ')) {
-        const prop = patternExpander.utilityToCSS(cls);
-        if (prop) cssProps.push(prop);
-      }
-      if (cssProps.length > 0) {
-        utilities.push({ class: name, css: cssProps.join(' ') });
-      }
-    }
-
-    return utilities;
+    return getAllUtilities(this.tokens)
   }
 
   /**
