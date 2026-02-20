@@ -27,7 +27,7 @@ export class AnimationEngine {
   }
 
   generateRuntimeScript() {
-    return `
+  return `
 (function() {
   const CONFIGS = ${JSON.stringify(this.configs, null, 2)};
   const TOKENS  = ${JSON.stringify(this.tokens, null, 2)};
@@ -61,7 +61,6 @@ export class AnimationEngine {
         out[k] = resolveConfig(v);
       } else {
         let resolved = resolveToken(v);
-        // Convert raw ms numbers to seconds for GSAP
         if ((k === 'duration' || k === 'delay') && typeof resolved === 'number' && resolved > 10) {
           resolved = resolved / 1000;
         }
@@ -98,7 +97,7 @@ export class AnimationEngine {
     return o;
   }
 
-  function initEntrance(el, config) {
+  function initEntrance(gsap, ScrollTrigger, el, config) {
     const r    = resolveConfig(config);
     const mods = getMods(el);
     const data = getDataOverrides(el);
@@ -112,7 +111,7 @@ export class AnimationEngine {
       ...data
     };
 
-    if (hasScroll && typeof ScrollTrigger !== 'undefined') {
+    if (hasScroll && ScrollTrigger) {
       toConfig.scrollTrigger = {
         trigger: el,
         start: 'top 80%',
@@ -126,7 +125,7 @@ export class AnimationEngine {
       : gsap.to(el, toConfig);
   }
 
-  function initHover(el, config) {
+  function initHover(gsap, el, config) {
     const r = resolveConfig(config);
     if (!r.hover) return;
     const hc = { ...r.hover, duration: r.hover.duration || 0.15 };
@@ -139,7 +138,7 @@ export class AnimationEngine {
     el.addEventListener('mouseleave', () => gsap.to(el, { ...reset, duration: hc.duration, ease: 'power2.inOut' }));
   }
 
-  function initActive(el, config) {
+  function initActive(gsap, el, config) {
     const r = resolveConfig(config);
     if (!r.active) return;
     const ac = { ...r.active, duration: r.active.duration || 0.1 };
@@ -147,7 +146,7 @@ export class AnimationEngine {
     el.addEventListener('mouseup',   () => gsap.to(el, { scale:1, duration: ac.duration, ease: 'back.out(2)' }));
   }
 
-  function initStagger(el, config) {
+  function initStagger(gsap, ScrollTrigger, el, config) {
     const r = resolveConfig(config);
     const children = Array.from(el.children);
     if (!children.length) return;
@@ -158,13 +157,13 @@ export class AnimationEngine {
       ease     : r.ease     || 'power2.out',
       stagger  : r.stagger  || 0.1
     };
-    if (hasScroll && typeof ScrollTrigger !== 'undefined') {
+    if (hasScroll && ScrollTrigger) {
       gc.scrollTrigger = { trigger: el, start: 'top 80%' };
     }
     gsap.fromTo(children, r.from || {}, gc);
   }
 
-  function initScrollOnly(el, config) {
+  function initScrollOnly(gsap, el, config) {
     const r = resolveConfig(config);
     if (!r.scrollTrigger) return;
     const sc = { ...r.scrollTrigger };
@@ -172,36 +171,52 @@ export class AnimationEngine {
     gsap.to(el, { ...r, scrollTrigger: sc });
   }
 
-  function init() {
+  function run(gsap, ScrollTrigger) {
     console.log('🌊 Mizumi Animations Initializing...');
-    if (typeof ScrollTrigger !== 'undefined') {
+
+    // ScrollTrigger is now part of gsap package since 2025
+    if (ScrollTrigger) {
       gsap.registerPlugin(ScrollTrigger);
     }
 
     for (const [name, config] of Object.entries(CONFIGS)) {
       const els = document.querySelectorAll('.' + CSS.escape(name));
       els.forEach(el => {
-        if      (config.hover)                      initHover(el, config);
-        else if (config.active)                     initActive(el, config);
-        else if (config.targets === 'children')     initStagger(el, config);
-        else if (config.scrollTrigger && !config.from && !config.to) initScrollOnly(el, config);
-        else if (config.from || config.to)          initEntrance(el, config);
+        if      (config.hover)                                             initHover(gsap, el, config);
+        else if (config.active)                                            initActive(gsap, el, config);
+        else if (config.targets === 'children')                            initStagger(gsap, ScrollTrigger, el, config);
+        else if (config.scrollTrigger && !config.from && !config.to)      initScrollOnly(gsap, el, config);
+        else if (config.from || config.to)                                 initEntrance(gsap, ScrollTrigger, el, config);
       });
     }
+
     console.log('✅ Mizumi Ready!');
   }
 
+  async function init() {
+  if (typeof window.gsap === 'undefined') {
+    console.warn('🌊 Mizumi: GSAP not found. Animations will not run.');
+    console.warn('  HTML users: add GSAP via CDN script tag');
+    console.warn('  React/Vite users: npm install gsap, then set window.gsap = gsap in main.jsx');
+    return;
+  }
+
+  const gsap = window.gsap;
+  const ScrollTrigger = window.ScrollTrigger || null;
+  if (ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
+
+  run(gsap, ScrollTrigger);
+}
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      typeof gsap !== 'undefined' ? init() : setTimeout(init, 100);
-    });
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    typeof gsap !== 'undefined' ? init() : setTimeout(init, 100);
+    init();
   }
 
   window.Mizumi = { init, version: '0.1.0' };
 })();
 `;
-  }
+}
 }
 
