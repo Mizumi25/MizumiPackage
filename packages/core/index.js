@@ -104,7 +104,17 @@ class Mizumi {
     fs.writeFileSync(helpersPath, helpers)
     console.log(`✅ Helpers: ${helpersPath} (${(Buffer.byteLength(helpers)/1024).toFixed(2)} KB)`)
 
-    return { cssPath, jsPath, dtsPath, helpersPath }
+  const metaPath = path.join(outputDir, 'mizumi.meta.json');
+  const meta = JSON.stringify({
+    tokens: this.config.tokens,
+    patterns: this.config.patterns,
+    animations: this.config.animations,
+    rules: this.config.rules
+  }, null, 2);
+  fs.writeFileSync(metaPath, meta);
+  console.log(`✅ Meta JSON: ${metaPath} (${(Buffer.byteLength(meta)/1024).toFixed(2)} KB)`);
+
+    return { cssPath, jsPath, dtsPath, helpersPath, metaPath, }
   }
 
   expandClassName(className) {

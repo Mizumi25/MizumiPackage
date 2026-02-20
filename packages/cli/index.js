@@ -24,7 +24,7 @@ const commands = {
 
     // Default config template
     const configTemplate = `// mizumi.config.js
-export {
+export default {
   tokens: {
     colors: {
       primary: {
@@ -373,11 +373,11 @@ Commands:
   help              Show help
 
 Examples:
-  node mizumi init
-  node mizumi build
-  node mizumi watch
-  node mizumi list
-  node mizumi explain "card animate-fade-in"
+  npx mizumi init
+  npx mizumi build
+  npx mizumi watch
+  npx mizumi list
+  npx mizumi explain "card animate-fade-in"
   `);
 },
 
