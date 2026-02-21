@@ -164,13 +164,24 @@ export default {
   },
 
   rules: {
-    darkMode: 'class',
-    responsive: true,
+    responsive:  true,
+    darkMode:    'class',
+    print:       true,
+    motion:      true,
+    orientation: false,
+  
     breakpoints: {
-      sm: '640px',
-      md: '768px',
-      lg: '1024px',
-      xl: '1280px'
+      sm:  '640px',
+      md:  '768px',
+      lg:  '1024px',
+      xl:  '1280px',
+      '2xl': '1536px'
+    },
+  
+    // Container queries — frame-name:card frame-type:inline on parent
+    containers: {
+      card:    { sm: '300px', md: '500px' },
+      sidebar: { collapsed: '200px', expanded: '320px' },
     }
   }
 };

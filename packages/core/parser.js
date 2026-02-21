@@ -1,109 +1,197 @@
 // packages/core/parser.js
+// Parses all Mizumi token categories into CSS variables
+// Supports: colors, spacing, typography, radius, shadows,
+//           fonts, easing, duration, blur, opacity, zIndex,
+//           strokes, leading, tracking, screens, frames
 
-/**
- * Parse design tokens config and generate CSS variables
- */
-export class TokenParser { 
+export class TokenParser {
   constructor(config) {
-    this.config = config;
+    this.config = config
   }
 
-  /**
-   * Convert tokens to CSS variables
-   * Input: { colors: { primary: '#3B82F6' } }
-   * Output: { '--color-primary': '#3B82F6' }
-   */
   parse() {
-    const cssVars = {};
-    
-    // Parse colors
-    if (this.config.colors) {
-      this.parseColors(this.config.colors, cssVars);
-    }
-    
-    // Parse spacing
-    if (this.config.spacing) {
-      this.parseSpacing(this.config.spacing, cssVars);
-    }
-    
-    // Parse typography
-    if (this.config.typography) {
-      this.parseTypography(this.config.typography, cssVars);
-    }
-    
-    // Parse radius
-    if (this.config.radius) {
-      this.parseRadius(this.config.radius, cssVars);
-    }
-    
-    // Parse shadows
-    if (this.config.shadows) {
-      this.parseShadows(this.config.shadows, cssVars);
-    }
-    
-    return cssVars;
+    const vars = {}
+    const c    = this.config
+
+    if (c.colors)      this.parseColors(c.colors, vars)
+    if (c.spacing)     this.parseSpacing(c.spacing, vars)
+    if (c.typography)  this.parseTypography(c.typography, vars)
+    if (c.fonts)       this.parseFonts(c.fonts, vars)
+    if (c.radius)      this.parseRadius(c.radius, vars)
+    if (c.shadows)     this.parseShadows(c.shadows, vars)
+    if (c.easing)      this.parseEasing(c.easing, vars)
+    if (c.duration)    this.parseDuration(c.duration, vars)
+    if (c.blur)        this.parseBlur(c.blur, vars)
+    if (c.opacity)     this.parseOpacity(c.opacity, vars)
+    if (c.zIndex)      this.parseZIndex(c.zIndex, vars)
+    if (c.strokes)     this.parseStrokes(c.strokes, vars)
+    if (c.leading)     this.parseLeading(c.leading, vars)
+    if (c.tracking)    this.parseTracking(c.tracking, vars)
+    if (c.screens)     this.parseScreens(c.screens, vars)
+
+    return vars
   }
 
-  parseColors(colors, cssVars, prefix = 'color') {
+  // ── Colors ──
+  // Supports flat, nested, and DEFAULT shade
+  parseColors(colors, vars, prefix = 'color') {
     for (const [key, value] of Object.entries(colors)) {
-      if (typeof value === 'object') {
-        // Nested object (e.g., primary: { 50: '#EFF6FF', 600: '#2563EB' })
+      if (typeof value === 'object' && value !== null) {
         for (const [shade, color] of Object.entries(value)) {
-          const varName = shade === 'DEFAULT' 
-            ? `--${prefix}-${key}` 
-            : `--${prefix}-${key}-${shade}`;
-          cssVars[varName] = color;
+          const name = shade === 'DEFAULT'
+            ? `--${prefix}-${key}`
+            : `--${prefix}-${key}-${shade}`
+          vars[name] = color
         }
       } else {
-        // Simple value (e.g., primary: '#3B82F6')
-        cssVars[`--${prefix}-${key}`] = value;
+        vars[`--${prefix}-${key}`] = value
       }
     }
   }
 
-  parseSpacing(spacing, cssVars) {
+  // ── Spacing ──
+  parseSpacing(spacing, vars) {
     for (const [key, value] of Object.entries(spacing)) {
-      cssVars[`--spacing-${key}`] = value;
+      vars[`--spacing-${key}`] = value
     }
   }
 
-  parseTypography(typography, cssVars) {
+  // ── Typography ──
+  // Supports: { h1: { size, weight, line } } or { h1: '2rem' }
+  parseTypography(typography, vars) {
     for (const [key, value] of Object.entries(typography)) {
-      if (typeof value === 'object') {
-        cssVars[`--text-${key}-size`] = value.size;
-        cssVars[`--text-${key}-weight`] = value.weight;
-        cssVars[`--text-${key}-line`] = value.line;
+      if (typeof value === 'object' && value !== null) {
+        if (value.size)    vars[`--text-${key}-size`]   = value.size
+        if (value.weight)  vars[`--text-${key}-weight`] = value.weight
+        if (value.line)    vars[`--text-${key}-line`]   = value.line
+        if (value.spacing) vars[`--text-${key}-spacing`]= value.spacing
+        if (value.font)    vars[`--text-${key}-font`]   = value.font
       } else {
-        cssVars[`--text-${key}`] = value;
+        vars[`--text-${key}-size`] = value
       }
     }
   }
 
-  parseRadius(radius, cssVars) {
+  // ── Fonts ──
+  // { sans: 'Inter, sans-serif', mono: 'Fira Code, monospace' }
+  parseFonts(fonts, vars) {
+    for (const [key, value] of Object.entries(fonts)) {
+      vars[`--font-${key}`] = value
+    }
+  }
+
+  // ── Radius ──
+  parseRadius(radius, vars) {
     for (const [key, value] of Object.entries(radius)) {
-      cssVars[`--radius-${key}`] = value;
+      vars[`--radius-${key}`] = value
     }
   }
 
-  parseShadows(shadows, cssVars) {
+  // ── Shadows ──
+  // Supports flat value or { box, text, drop } per key
+  parseShadows(shadows, vars) {
     for (const [key, value] of Object.entries(shadows)) {
-      cssVars[`--shadow-${key}`] = value;
+      if (typeof value === 'object' && value !== null) {
+        if (value.box)  vars[`--shadow-${key}`]      = value.box
+        if (value.text) vars[`--shadow-text-${key}`] = value.text
+        if (value.drop) vars[`--shadow-drop-${key}`] = value.drop
+      } else {
+        vars[`--shadow-${key}`] = value
+      }
     }
   }
 
-  /**
-   * Generate CSS string from parsed variables
-   */
-  toCSS() {
-    const vars = this.parse();
-    const cssLines = [':root {'];
-    
-    for (const [name, value] of Object.entries(vars)) {
-      cssLines.push(`  ${name}: ${value};`);
+  // ── Easing ──
+  // { smooth: 'cubic-bezier(0.4,0,0.2,1)', bouncy: 'cubic-bezier(0.34,1.56,0.64,1)' }
+  parseEasing(easing, vars) {
+    for (const [key, value] of Object.entries(easing)) {
+      vars[`--ease-${key}`] = value
     }
-    
-    cssLines.push('}');
-    
-    return cssLines.join('\n');
+  }
+
+  // ── Duration ──
+  // { fast: '150ms', normal: '300ms', slow: '500ms' }
+  parseDuration(duration, vars) {
+    for (const [key, value] of Object.entries(duration)) {
+      vars[`--duration-${key}`] = value
+    }
+  }
+
+  // ── Blur ──
+  // { sm: '4px', md: '8px', lg: '16px', glass: '20px' }
+  parseBlur(blur, vars) {
+    for (const [key, value] of Object.entries(blur)) {
+      vars[`--blur-${key}`] = value
+    }
+  }
+
+  // ── Opacity ──
+  // { ghost: '0.1', muted: '0.5', full: '1' }
+  parseOpacity(opacity, vars) {
+    for (const [key, value] of Object.entries(opacity)) {
+      vars[`--opacity-${key}`] = value
+    }
+  }
+
+  // ── Z-Index ──
+  // { base: 0, float: 10, modal: 100, toast: 200, top: 999 }
+  parseZIndex(zIndex, vars) {
+    for (const [key, value] of Object.entries(zIndex)) {
+      vars[`--z-${key}`] = value
+    }
+  }
+
+  // ── Strokes (border widths) ──
+  // { thin: '1px', md: '2px', thick: '4px' }
+  parseStrokes(strokes, vars) {
+    for (const [key, value] of Object.entries(strokes)) {
+      vars[`--stroke-${key}`] = value
+    }
+  }
+
+  // ── Leading (line-height) ──
+  // { tight: '1.25', normal: '1.5', loose: '2' }
+  parseLeading(leading, vars) {
+    for (const [key, value] of Object.entries(leading)) {
+      vars[`--leading-${key}`] = value
+    }
+  }
+
+  // ── Tracking (letter-spacing) ──
+  // { tight: '-0.05em', normal: '0', wide: '0.1em' }
+  parseTracking(tracking, vars) {
+    for (const [key, value] of Object.entries(tracking)) {
+      vars[`--tracking-${key}`] = value
+    }
+  }
+
+  // ── Screens (stored as vars for runtime reference) ──
+  // { sm: '640px', md: '768px', lg: '1024px' }
+  parseScreens(screens, vars) {
+    for (const [key, value] of Object.entries(screens)) {
+      vars[`--screen-${key}`] = value
+    }
+  }
+
+  // ── Output ──
+  toCSS() {
+    const vars  = this.parse()
+    const lines = [':root {']
+
+    // Group by category for readability
+    const groups = {}
+    for (const [name, value] of Object.entries(vars)) {
+      const category = name.split('-')[1] || 'misc'
+      if (!groups[category]) groups[category] = []
+      groups[category].push(`  ${name}: ${value};`)
+    }
+
+    for (const [category, entries] of Object.entries(groups)) {
+      lines.push(`\n  /* ${category} */`)
+      lines.push(...entries)
+    }
+
+    lines.push('}')
+    return lines.join('\n')
   }
 }

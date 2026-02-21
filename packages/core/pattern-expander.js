@@ -1,136 +1,122 @@
 // packages/core/pattern-expander.js
+// Expands patterns into resolved CSS
+// Colon-aware: pad:md, paint:primary, curve:lg
+// Conflict detection via CAPABILITY_PROPERTY_MAP
 
+import { resolveClass, CAPABILITY_PROPERTY_MAP } from './class-resolver.js'
 
-import { resolveClass } from './class-resolver.js'
-/**
- * Expand patterns into utility classes
- */
 export class PatternExpander {
   constructor(patterns) {
-    this.patterns = patterns || {};
+    this.patterns = patterns || {}
   }
 
-  /**
-   * Expand a pattern to its utility classes
-   * Example: 'card' -> 'bg-surface pad-md rounded-lg shadow-md'
-   */
-  expand(patternName) {
-    if (!this.patterns[patternName]) {
-      return null; // Pattern not found
-    }
-    
-    const patternValue = this.patterns[patternName];
-    
-    // Check if pattern references other patterns
-    const classes = patternValue.split(' ');
-    const expanded = [];
-    
-    for (const className of classes) {
-      // If this class is also a pattern, expand it recursively
-      if (this.patterns[className]) {
-        const nested = this.expand(className);
-        if (nested) {
-          expanded.push(...nested.split(' '));
-        } else {
-          expanded.push(className);
-        }
+  // Expand one pattern by name — recursive for nested patterns
+  expand(name) {
+    if (!this.patterns[name]) return null
+
+    const classes  = this.patterns[name].split(/\s+/).filter(Boolean)
+    const expanded = []
+
+    for (const cls of classes) {
+      if (this.patterns[cls]) {
+        const nested = this.expand(cls)
+        if (nested) expanded.push(...nested.split(/\s+/))
       } else {
-        expanded.push(className);
+        expanded.push(cls)
       }
     }
-    
-    return expanded.join(' ');
+
+    return this.deduplicate(expanded).join(' ')
   }
 
-  /**
-   * Expand multiple class names (including patterns)
-   * Example: 'card hover-lift' -> 'bg-surface pad-md rounded-lg shadow-md hover-lift'
-   */
+  // Expand a full className string (mixed patterns + utilities)
   expandClasses(classNames) {
-    const classes = classNames.split(' ').filter(Boolean);
-    const expanded = [];
-    
-    for (const className of classes) {
-      const expandedPattern = this.expand(className);
-      if (expandedPattern) {
-        expanded.push(...expandedPattern.split(' '));
+    const classes  = classNames.split(/\s+/).filter(Boolean)
+    const expanded = []
+
+    for (const cls of classes) {
+      const pattern = this.expand(cls)
+      if (pattern) {
+        expanded.push(...pattern.split(/\s+/))
       } else {
-        // Not a pattern, keep as-is
-        expanded.push(className);
+        expanded.push(cls)
       }
     }
-    
-    // Remove duplicates (keep last occurrence for override behavior)
-    return this.deduplicateClasses(expanded);
+
+    return this.deduplicate(expanded).join(' ')
   }
 
-  /**
-   * Remove duplicate classes (last one wins)
-   */
-  deduplicateClasses(classes) {
-    const seen = new Map();
-    
+  // Extract capability from colon syntax — pad:md → pad
+  getCapability(cls) {
+    // Strip variant prefix first: hover\:pad:md → pad:md
+    const clean = cls.replace(/^[^\\]+\\:/, '')
+
+    // Handle prop syntax: pad:md{lg} → pad
+    const withoutProps = clean.replace(/\{[^}]*\}/, '')
+
+    // Split on colon — capability is everything before last colon
+    const colonIdx = withoutProps.indexOf(':')
+    if (colonIdx === -1) return null
+
+    return withoutProps.slice(0, colonIdx)
+  }
+
+  // Map capability to CSS property for conflict detection
+  getCSSProperty(cls) {
+    const capability = this.getCapability(cls)
+    if (!capability) return null
+    return CAPABILITY_PROPERTY_MAP[capability] || null
+  }
+
+  // Remove duplicate CSS properties — last one wins
+  deduplicate(classes) {
+    const propertyMap = new Map() // cssProperty → { cls, index }
+    const noConflict  = []        // classes with no conflict detection
+
     for (let i = 0; i < classes.length; i++) {
-      const className = classes[i];
-      const property = this.getPropertyFromClass(className);
-      
+      const cls      = classes[i]
+      const property = this.getCSSProperty(cls)
+
       if (property) {
-        // If we've seen this property before, update the index
-        seen.set(property, { className, index: i });
+        propertyMap.set(property, { cls, index: i })
       } else {
-        // Unknown property or non-conflicting class, keep it
-        seen.set(className, { className, index: i });
+        noConflict.push({ cls, index: i })
       }
     }
-    
-    // Sort by original index and extract class names
-    return Array.from(seen.values())
+
+    // Merge and sort by original index
+    return [
+      ...Array.from(propertyMap.values()),
+      ...noConflict
+    ]
       .sort((a, b) => a.index - b.index)
-      .map(item => item.className);
+      .map(item => item.cls)
   }
 
-  /**
-   * Get CSS property from class name (for conflict detection)
-   * Example: 'pad-md' -> 'padding', 'bg-primary' -> 'background'
-   */
-  getPropertyFromClass(className) {
-    if (className.startsWith('pad-')) return 'padding';
-    if (className.startsWith('mar-')) return 'margin';
-    if (className.startsWith('bg-')) return 'background';
-    if (className.startsWith('color-')) return 'color';
-    if (className.startsWith('shadow-')) return 'box-shadow';
-    if (className.startsWith('rounded-')) return 'border-radius';
-    if (className.startsWith('border-')) return 'border';
-    
-    return null; // No conflict detection for this class
-  }
+  // Generate CSS for all patterns
+  toCSS() {
+    const lines = []
 
-  /**
-   * Generate CSS from patterns
-   */
-toCSS() {
-  const cssLines = []
+    for (const [name] of Object.entries(this.patterns)) {
+      const expanded = this.expand(name)
+      if (!expanded) continue
 
-  for (const [patternName] of Object.entries(this.patterns)) {
-    const expanded = this.expand(patternName)
-    if (!expanded) continue
+      const props = []
+      for (const cls of expanded.split(/\s+/)) {
+        // Strip any variant prefix before resolving
+        const base = cls.replace(/^[^\\]+\\:/, '')
+        const css  = resolveClass(base)
+        if (css) props.push(`  ${css}`)
+      }
 
-    const cssProps = []
-    for (const cls of expanded.split(' ')) {
-      const prop = resolveClass(cls)
-      if (prop) cssProps.push(`  ${prop}`)
+      if (props.length > 0) {
+        lines.push(`.${name} {`)
+        lines.push(...props)
+        lines.push('}')
+        lines.push('')
+      }
     }
 
-    if (cssProps.length > 0) {
-      cssLines.push(`.${patternName} {`)
-      cssLines.push(...cssProps)
-      cssLines.push('}')
-      cssLines.push('')
-    }
+    return lines.join('\n')
   }
-
-  return cssLines.join('\n')
-}
-
-
 }
