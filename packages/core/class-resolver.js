@@ -454,29 +454,32 @@ export function resolveClass(className, tokens = {}) {
 
   // ── INK (color) ──
   const ink = className.match(/^ink:(.+)$/)
-  if (ink) return `color: var(--color-${ink[1]});`
+  if (ink) return `color: ${resolveValue(ink[1],'color')};`
 
   const inkCaret = className.match(/^ink-caret:(.+)$/)
-  if (inkCaret) return `caret-color: var(--color-${inkCaret[1]});`
+  if (inkCaret) return `caret-color: ${resolveValue(inkCaret[1],'color')};`
 
   const inkAccent = className.match(/^ink-accent:(.+)$/)
-  if (inkAccent) return `accent-color: var(--color-${inkAccent[1]});`
+  if (inkAccent) return `accent-color: ${resolveValue(inkAccent[1],'color')};`
 
   const inkFill = className.match(/^ink-fill:(.+)$/)
-  if (inkFill) return `fill: var(--color-${inkFill[1]});`
+  if (inkFill) return `fill: ${resolveValue(inkFill[1],'color')};`
+
+  const inkFillFade = className.match(/^ink-fill-fade:(.+)$/)
+  if (inkFillFade) return `fill-opacity: ${inkFillFade[1]};`
 
   // ── PAINT (background) ──
   const paint = className.match(/^paint:(.+)$/)
-  if (paint) return `background-color: var(--color-${paint[1]});`
+  if (paint) return `background-color: ${resolveValue(paint[1],'color')};`
 
   const paintImg = className.match(/^paint-img:(.+)$/)
-  if (paintImg) return `background-image: var(--${paintImg[1]});`
+  if (paintImg) return `background-image: ${isRawCSSValue(paintImg[1]) ? paintImg[1] : `url(${paintImg[1]})`};`
 
   const paintSize = className.match(/^paint-size:(.+)$/)
-  if (paintSize) return `background-size: ${paintSize[1]};`
+  if (paintSize) return `background-size: ${paintSize[1].replace(/_/g,' ')};`
 
   const paintPos = className.match(/^paint-pos:(.+)$/)
-  if (paintPos) return `background-position: ${paintPos[1]};`
+  if (paintPos) return `background-position: ${paintPos[1].replace(/_/g,' ')};`
 
   const paintBlend = className.match(/^paint-blend:(.+)$/)
   if (paintBlend) return `background-blend-mode: ${paintBlend[1]};`
@@ -486,156 +489,202 @@ export function resolveClass(className, tokens = {}) {
 
   // ── CANVAS (sizing) ──
   const canvasW = className.match(/^canvas-w:(.+)$/)
-  if (canvasW) return `width: ${resolveValue(canvasW[1], 'spacing')};`
+  if (canvasW) {
+    const S = { full:'100%', screen:'100vw', auto:'auto', fit:'fit-content', max:'max-content', min:'min-content' }
+    return `width: ${S[canvasW[1]] || resolveValue(canvasW[1],'spacing')};`
+  }
 
   const canvasH = className.match(/^canvas-h:(.+)$/)
-  if (canvasH) return `height: ${resolveValue(canvasH[1], 'spacing')};`
+  if (canvasH) {
+    const S = { full:'100%', screen:'100vh', auto:'auto', fit:'fit-content', max:'max-content', min:'min-content' }
+    return `height: ${S[canvasH[1]] || resolveValue(canvasH[1],'spacing')};`
+  }
 
   const canvasWMin = className.match(/^canvas-w-min:(.+)$/)
-  if (canvasWMin) return `min-width: ${resolveValue(canvasWMin[1], 'spacing')};`
+  if (canvasWMin) return `min-width: ${resolveValue(canvasWMin[1],'spacing')};`
 
   const canvasHMin = className.match(/^canvas-h-min:(.+)$/)
-  if (canvasHMin) return `min-height: ${resolveValue(canvasHMin[1], 'spacing')};`
+  if (canvasHMin) return `min-height: ${resolveValue(canvasHMin[1],'spacing')};`
 
   const canvasWMax = className.match(/^canvas-w-max:(.+)$/)
-  if (canvasWMax) return `max-width: ${resolveValue(canvasWMax[1], 'spacing')};`
+  if (canvasWMax) return `max-width: ${resolveValue(canvasWMax[1],'spacing')};`
 
   const canvasHMax = className.match(/^canvas-h-max:(.+)$/)
-  if (canvasHMax) return `max-height: ${resolveValue(canvasHMax[1], 'spacing')};`
+  if (canvasHMax) return `max-height: ${resolveValue(canvasHMax[1],'spacing')};`
 
   const canvasRatio = className.match(/^canvas-ratio:(.+)$/)
-  if (canvasRatio) return `aspect-ratio: ${canvasRatio[1].replace(/_/g, ' ')};`
+  if (canvasRatio) return `aspect-ratio: ${canvasRatio[1].replace(/_/g,'/')};`
 
   const canvasFitPos = className.match(/^canvas-fit-pos:(.+)$/)
-  if (canvasFitPos) return `object-position: ${canvasFitPos[1]};`
+  if (canvasFitPos) return `object-position: ${canvasFitPos[1].replace(/_/g,' ')};`
 
   const canvasFade = className.match(/^canvas-fade:(.+)$/)
-  if (canvasFade) return `opacity: ${canvasFade[1]};`
+  if (canvasFade) return `opacity: ${resolveValue(canvasFade[1],'opacity')};`
+
+  const canvasViewBox = className.match(/^canvas-view:(.+)$/)
+  if (canvasViewBox) return `object-view-box: ${canvasViewBox[1].replace(/_/g,' ')};`
 
   // ── PAD (padding) ──
   const padX = className.match(/^pad-x:(.+)$/)
-  if (padX) return `padding-left: var(--spacing-${padX[1]}); padding-right: var(--spacing-${padX[1]});`
+  if (padX) { const v=resolveValue(padX[1],'spacing'); return `padding-left: ${v}; padding-right: ${v};` }
 
   const padY = className.match(/^pad-y:(.+)$/)
-  if (padY) return `padding-top: var(--spacing-${padY[1]}); padding-bottom: var(--spacing-${padY[1]});`
+  if (padY) { const v=resolveValue(padY[1],'spacing'); return `padding-top: ${v}; padding-bottom: ${v};` }
 
   const padTop = className.match(/^pad-top:(.+)$/)
-  if (padTop) return `padding-top: var(--spacing-${padTop[1]});`
+  if (padTop) return `padding-top: ${resolveValue(padTop[1],'spacing')};`
 
   const padRight = className.match(/^pad-right:(.+)$/)
-  if (padRight) return `padding-right: var(--spacing-${padRight[1]});`
+  if (padRight) return `padding-right: ${resolveValue(padRight[1],'spacing')};`
 
   const padBtm = className.match(/^pad-btm:(.+)$/)
-  if (padBtm) return `padding-bottom: var(--spacing-${padBtm[1]});`
+  if (padBtm) return `padding-bottom: ${resolveValue(padBtm[1],'spacing')};`
 
   const padLeft = className.match(/^pad-left:(.+)$/)
-  if (padLeft) return `padding-left: var(--spacing-${padLeft[1]});`
+  if (padLeft) return `padding-left: ${resolveValue(padLeft[1],'spacing')};`
 
   const pad = className.match(/^pad:(.+)$/)
-  if (pad) return `padding: var(--spacing-${pad[1]});`
+  if (pad) return `padding: ${resolveValue(pad[1],'spacing')};`
 
   // ── MAR (margin) ──
   const marX = className.match(/^mar-x:(.+)$/)
-  if (marX) return `margin-left: var(--spacing-${marX[1]}); margin-right: var(--spacing-${marX[1]});`
+  if (marX) { const v=resolveValue(marX[1],'spacing'); return `margin-left: ${v}; margin-right: ${v};` }
 
   const marY = className.match(/^mar-y:(.+)$/)
-  if (marY) return `margin-top: var(--spacing-${marY[1]}); margin-bottom: var(--spacing-${marY[1]});`
+  if (marY) { const v=resolveValue(marY[1],'spacing'); return `margin-top: ${v}; margin-bottom: ${v};` }
 
   const marTop = className.match(/^mar-top:(.+)$/)
-  if (marTop) return `margin-top: var(--spacing-${marTop[1]});`
+  if (marTop) return `margin-top: ${resolveValue(marTop[1],'spacing')};`
 
   const marRight = className.match(/^mar-right:(.+)$/)
-  if (marRight) return `margin-right: var(--spacing-${marRight[1]});`
+  if (marRight) return `margin-right: ${resolveValue(marRight[1],'spacing')};`
 
   const marBtm = className.match(/^mar-btm:(.+)$/)
-  if (marBtm) return `margin-bottom: var(--spacing-${marBtm[1]});`
+  if (marBtm) return `margin-bottom: ${resolveValue(marBtm[1],'spacing')};`
 
   const marLeft = className.match(/^mar-left:(.+)$/)
-  if (marLeft) return `margin-left: var(--spacing-${marLeft[1]});`
+  if (marLeft) return `margin-left: ${resolveValue(marLeft[1],'spacing')};`
 
   const mar = className.match(/^mar:(.+)$/)
-  if (mar) return `margin: var(--spacing-${mar[1]});`
+  if (mar) return `margin: ${resolveValue(mar[1],'spacing')};`
 
   // ── GAP ──
   const gapX = className.match(/^gap-x:(.+)$/)
-  if (gapX) return `column-gap: var(--spacing-${gapX[1]});`
+  if (gapX) return `column-gap: ${resolveValue(gapX[1],'spacing')};`
 
   const gapY = className.match(/^gap-y:(.+)$/)
-  if (gapY) return `row-gap: var(--spacing-${gapY[1]});`
+  if (gapY) return `row-gap: ${resolveValue(gapY[1],'spacing')};`
 
   const gap = className.match(/^gap:(.+)$/)
-  if (gap) return `gap: var(--spacing-${gap[1]});`
+  if (gap) return `gap: ${resolveValue(gap[1],'spacing')};`
 
   // ── STROKE (border) ──
   const strokeColor = className.match(/^stroke-color:(.+)$/)
-  if (strokeColor) return `border-color: var(--color-${strokeColor[1]});`
+  if (strokeColor) return `border-color: ${resolveValue(strokeColor[1],'color')};`
 
   const strokeWidth = className.match(/^stroke-width:(.+)$/)
-  if (strokeWidth) return `border-width: var(--stroke-${strokeWidth[1]}, ${strokeWidth[1]});`
+  if (strokeWidth) return `border-width: ${resolveValue(strokeWidth[1],'stroke')};`
 
   const strokeTopColor = className.match(/^stroke-top-color:(.+)$/)
-  if (strokeTopColor) return `border-top-color: var(--color-${strokeTopColor[1]});`
+  if (strokeTopColor) return `border-top-color: ${resolveValue(strokeTopColor[1],'color')};`
 
   const strokeBtmColor = className.match(/^stroke-btm-color:(.+)$/)
-  if (strokeBtmColor) return `border-bottom-color: var(--color-${strokeBtmColor[1]});`
+  if (strokeBtmColor) return `border-bottom-color: ${resolveValue(strokeBtmColor[1],'color')};`
 
   const strokeLeftColor = className.match(/^stroke-left-color:(.+)$/)
-  if (strokeLeftColor) return `border-left-color: var(--color-${strokeLeftColor[1]});`
+  if (strokeLeftColor) return `border-left-color: ${resolveValue(strokeLeftColor[1],'color')};`
 
   const strokeRightColor = className.match(/^stroke-right-color:(.+)$/)
-  if (strokeRightColor) return `border-right-color: var(--color-${strokeRightColor[1]});`
+  if (strokeRightColor) return `border-right-color: ${resolveValue(strokeRightColor[1],'color')};`
 
   const strokeGap = className.match(/^stroke-gap:(.+)$/)
-  if (strokeGap) return `border-spacing: var(--spacing-${strokeGap[1]});`
+  if (strokeGap) return `border-spacing: ${resolveValue(strokeGap[1],'spacing')};`
+
+  // logical border sides
+  const strokeTop = className.match(/^stroke-top:(.+)$/)
+  if (strokeTop) return `border-top-color: ${resolveValue(strokeTop[1],'color')};`
+
+  const strokeBtm = className.match(/^stroke-btm:(.+)$/)
+  if (strokeBtm) return `border-bottom-color: ${resolveValue(strokeBtm[1],'color')};`
+
+  const strokeLeft = className.match(/^stroke-left:(.+)$/)
+  if (strokeLeft) return `border-left-color: ${resolveValue(strokeLeft[1],'color')};`
+
+  const strokeRight = className.match(/^stroke-right:(.+)$/)
+  if (strokeRight) return `border-right-color: ${resolveValue(strokeRight[1],'color')};`
+
+  const strokeX = className.match(/^stroke-x:(.+)$/)
+  if (strokeX) return `border-inline: ${resolveValue(strokeX[1],'stroke')} solid;`
+
+  const strokeXStart = className.match(/^stroke-x-start:(.+)$/)
+  if (strokeXStart) return `border-inline-start-color: ${resolveValue(strokeXStart[1],'color')};`
+
+  const strokeXEnd = className.match(/^stroke-x-end:(.+)$/)
+  if (strokeXEnd) return `border-inline-end-color: ${resolveValue(strokeXEnd[1],'color')};`
+
+  const strokeY = className.match(/^stroke-y:(.+)$/)
+  if (strokeY) return `border-block: ${resolveValue(strokeY[1],'stroke')} solid;`
+
+  const strokeYStart = className.match(/^stroke-y-start:(.+)$/)
+  if (strokeYStart) return `border-block-start-color: ${resolveValue(strokeYStart[1],'color')};`
+
+  const strokeYEnd = className.match(/^stroke-y-end:(.+)$/)
+  if (strokeYEnd) return `border-block-end-color: ${resolveValue(strokeYEnd[1],'color')};`
+
+  const strokeImg = className.match(/^stroke-img:(.+)$/)
+  if (strokeImg) return `border-image: ${strokeImg[1].replace(/_/g,' ')};`
 
   // ── CURVE (border-radius) ──
   const curveTl = className.match(/^curve-tl:(.+)$/)
-  if (curveTl) return `border-top-left-radius: var(--radius-${curveTl[1]});`
+  if (curveTl) return `border-top-left-radius: ${resolveValue(curveTl[1],'radius')};`
 
   const curveTr = className.match(/^curve-tr:(.+)$/)
-  if (curveTr) return `border-top-right-radius: var(--radius-${curveTr[1]});`
+  if (curveTr) return `border-top-right-radius: ${resolveValue(curveTr[1],'radius')};`
 
   const curveBl = className.match(/^curve-bl:(.+)$/)
-  if (curveBl) return `border-bottom-left-radius: var(--radius-${curveBl[1]});`
+  if (curveBl) return `border-bottom-left-radius: ${resolveValue(curveBl[1],'radius')};`
 
   const curveBr = className.match(/^curve-br:(.+)$/)
-  if (curveBr) return `border-bottom-right-radius: var(--radius-${curveBr[1]});`
+  if (curveBr) return `border-bottom-right-radius: ${resolveValue(curveBr[1],'radius')};`
 
   const curveStart = className.match(/^curve-start:(.+)$/)
-  if (curveStart) return `border-start-start-radius: var(--radius-${curveStart[1]});`
+  if (curveStart) return `border-start-start-radius: ${resolveValue(curveStart[1],'radius')};`
 
   const curveEnd = className.match(/^curve-end:(.+)$/)
-  if (curveEnd) return `border-end-end-radius: var(--radius-${curveEnd[1]});`
+  if (curveEnd) return `border-end-end-radius: ${resolveValue(curveEnd[1],'radius')};`
 
   const curve = className.match(/^curve:(.+)$/)
-  if (curve) return `border-radius: var(--radius-${curve[1]});`
+  if (curve) return `border-radius: ${resolveValue(curve[1],'radius')};`
 
   // ── RING (outline) ──
   const ringColor = className.match(/^ring-color:(.+)$/)
-  if (ringColor) return `outline-color: var(--color-${ringColor[1]});`
+  if (ringColor) return `outline-color: ${resolveValue(ringColor[1],'color')};`
 
   const ringWidth = className.match(/^ring-width:(.+)$/)
-  if (ringWidth) return `outline-width: ${ringWidth[1]};`
+  if (ringWidth) return `outline-width: ${resolveValue(ringWidth[1],'stroke')};`
 
   const ringOffset = className.match(/^ring-offset:(.+)$/)
   if (ringOffset) return `outline-offset: ${ringOffset[1]};`
 
   const ring = className.match(/^ring:(.+)$/)
-  if (ring) return `outline: var(--stroke-${ring[1]}, ${ring[1]}) solid var(--color-primary);`
+  if (ring) return `outline: ${resolveValue(ring[1],'stroke')} solid;`
 
   // ── CAST (shadows) ──
   const castText = className.match(/^cast-text:(.+)$/)
-  if (castText) return `text-shadow: var(--shadow-${castText[1]});`
+  if (castText) return `text-shadow: ${resolveValue(castText[1],'shadow')};`
 
   const castInner = className.match(/^cast-inner:(.+)$/)
-  if (castInner) return `box-shadow: inset var(--shadow-${castInner[1]});`
+  if (castInner) return `box-shadow: inset ${resolveValue(castInner[1],'shadow')};`
+
+  const castDrop = className.match(/^cast-drop:(.+)$/)
+  if (castDrop) return `filter: drop-shadow(${resolveValue(castDrop[1],'shadow')});`
 
   const cast = className.match(/^cast:(.+)$/)
-  if (cast) return `box-shadow: var(--shadow-${cast[1]});`
+  if (cast) return `box-shadow: ${resolveValue(cast[1],'shadow')};`
 
   // ── GLOW (filter) ──
   const glowBlur = className.match(/^glow-blur:(.+)$/)
-  if (glowBlur) return `filter: blur(${glowBlur[1]});`
+  if (glowBlur) return `filter: blur(${resolveValue(glowBlur[1],'blur')});`
 
   const glowBright = className.match(/^glow-bright:(.+)$/)
   if (glowBright) return `filter: brightness(${glowBright[1]});`
@@ -655,12 +704,12 @@ export function resolveClass(className, tokens = {}) {
   const glowSat = className.match(/^glow-sat:(.+)$/)
   if (glowSat) return `filter: saturate(${glowSat[1]});`
 
-  const glowDrop = className.match(/^cast-drop:(.+)$/)
-  if (glowDrop) return `filter: drop-shadow(var(--shadow-${glowDrop[1]}));`
+  const glowSepia = className.match(/^glow-sepia:(.+)$/)
+  if (glowSepia) return `filter: sepia(${glowSepia[1]});`
 
   // ── GLASS (backdrop-filter) ──
   const glassBlur = className.match(/^glass-blur:(.+)$/)
-  if (glassBlur) return `backdrop-filter: blur(${glassBlur[1]});`
+  if (glassBlur) return `backdrop-filter: blur(${resolveValue(glassBlur[1],'blur')});`
 
   const glassBright = className.match(/^glass-bright:(.+)$/)
   if (glassBright) return `backdrop-filter: brightness(${glassBright[1]});`
@@ -668,35 +717,53 @@ export function resolveClass(className, tokens = {}) {
   const glassSat = className.match(/^glass-sat:(.+)$/)
   if (glassSat) return `backdrop-filter: saturate(${glassSat[1]});`
 
+  const glassContrast = className.match(/^glass-contrast:(.+)$/)
+  if (glassContrast) return `backdrop-filter: contrast(${glassContrast[1]});`
+
   const glass = className.match(/^glass:(.+)$/)
-  if (glass) return `backdrop-filter: blur(${glass[1]});`
+  if (glass) return `backdrop-filter: blur(${resolveValue(glass[1],'blur')});`
 
   // ── CLIP ──
   const clip = className.match(/^clip:(.+)$/)
-  if (clip) return `clip-path: ${clip[1]};`
+  if (clip) return `clip-path: ${clip[1].replace(/_/g,' ')};`
 
   const clipMar = className.match(/^clip-mar:(.+)$/)
   if (clipMar) return `overflow-clip-margin: ${clipMar[1]};`
 
+  const mask = className.match(/^mask:(.+)$/)
+  if (mask) return `mask: ${mask[1].replace(/_/g,' ')};`
+
+  const maskSize = className.match(/^mask-size:(.+)$/)
+  if (maskSize) return `mask-size: ${maskSize[1].replace(/_/g,' ')};`
+
+  const maskPos = className.match(/^mask-pos:(.+)$/)
+  if (maskPos) return `mask-position: ${maskPos[1].replace(/_/g,' ')};`
+
   // ── POSITION VALUES ──
   const posTop = className.match(/^pos-top:(.+)$/)
-  if (posTop) return `top: var(--spacing-${posTop[1]}, ${posTop[1]});`
+  if (posTop) return `top: ${resolveValue(posTop[1],'spacing')};`
 
   const posRight = className.match(/^pos-right:(.+)$/)
-  if (posRight) return `right: var(--spacing-${posRight[1]}, ${posRight[1]});`
+  if (posRight) return `right: ${resolveValue(posRight[1],'spacing')};`
 
   const posBtm = className.match(/^pos-btm:(.+)$/)
-  if (posBtm) return `bottom: var(--spacing-${posBtm[1]}, ${posBtm[1]});`
+  if (posBtm) return `bottom: ${resolveValue(posBtm[1],'spacing')};`
 
   const posLeft = className.match(/^pos-left:(.+)$/)
-  if (posLeft) return `left: var(--spacing-${posLeft[1]}, ${posLeft[1]});`
+  if (posLeft) return `left: ${resolveValue(posLeft[1],'spacing')};`
 
   const posInset = className.match(/^pos-inset:(.+)$/)
-  if (posInset) return `inset: var(--spacing-${posInset[1]}, ${posInset[1]});`
+  if (posInset) return `inset: ${resolveValue(posInset[1],'spacing')};`
+
+  const posInsetX = className.match(/^pos-inset-x:(.+)$/)
+  if (posInsetX) { const v=resolveValue(posInsetX[1],'spacing'); return `left: ${v}; right: ${v};` }
+
+  const posInsetY = className.match(/^pos-inset-y:(.+)$/)
+  if (posInsetY) { const v=resolveValue(posInsetY[1],'spacing'); return `top: ${v}; bottom: ${v};` }
 
   // ── LAYER (z-index) ──
   const layer = className.match(/^layer:(.+)$/)
-  if (layer) return `z-index: ${layer[1]};`
+  if (layer) return `z-index: ${resolveValue(layer[1],'z')};`
 
   // ── FLEX ──
   const flexGrow = className.match(/^flex-grow:(.+)$/)
@@ -706,7 +773,7 @@ export function resolveClass(className, tokens = {}) {
   if (flexShrink) return `flex-shrink: ${flexShrink[1]};`
 
   const flexBase = className.match(/^flex-base:(.+)$/)
-  if (flexBase) return `flex-basis: var(--spacing-${flexBase[1]}, ${flexBase[1]});`
+  if (flexBase) return `flex-basis: ${resolveValue(flexBase[1],'spacing')};`
 
   const flexOrder = className.match(/^flex-order:(.+)$/)
   if (flexOrder) return `order: ${flexOrder[1]};`
@@ -716,35 +783,41 @@ export function resolveClass(className, tokens = {}) {
 
   // ── GRID ──
   const gridCols = className.match(/^grid-cols:(.+)$/)
-  if (gridCols) return `grid-template-columns: ${gridCols[1].replace(/_/g, ' ')};`
+  if (gridCols) return `grid-template-columns: ${gridCols[1].replace(/_/g,' ')};`
 
   const gridRows = className.match(/^grid-rows:(.+)$/)
-  if (gridRows) return `grid-template-rows: ${gridRows[1].replace(/_/g, ' ')};`
+  if (gridRows) return `grid-template-rows: ${gridRows[1].replace(/_/g,' ')};`
 
   const gridArea = className.match(/^grid-area:(.+)$/)
   if (gridArea) return `grid-area: ${gridArea[1]};`
 
   const gridCol = className.match(/^grid-col:(.+)$/)
-  if (gridCol) return `grid-column: ${gridCol[1].replace(/_/g, ' ')};`
+  if (gridCol) return `grid-column: ${gridCol[1].replace(/_/g,' ')};`
 
   const gridRow = className.match(/^grid-row:(.+)$/)
-  if (gridRow) return `grid-row: ${gridRow[1].replace(/_/g, ' ')};`
+  if (gridRow) return `grid-row: ${gridRow[1].replace(/_/g,' ')};`
 
   const gridColAuto = className.match(/^grid-col-auto:(.+)$/)
-  if (gridColAuto) return `grid-auto-columns: ${gridColAuto[1].replace(/_/g, ' ')};`
+  if (gridColAuto) return `grid-auto-columns: ${gridColAuto[1].replace(/_/g,' ')};`
 
   const gridRowAuto = className.match(/^grid-row-auto:(.+)$/)
-  if (gridRowAuto) return `grid-auto-rows: ${gridRowAuto[1].replace(/_/g, ' ')};`
+  if (gridRowAuto) return `grid-auto-rows: ${gridRowAuto[1].replace(/_/g,' ')};`
+
+  const gridTemplate = className.match(/^grid-template:(.+)$/)
+  if (gridTemplate) return `grid-template: ${gridTemplate[1].replace(/_/g,' ')};`
 
   // ── TYPE (typography) ──
   const typeFace = className.match(/^type-face:(.+)$/)
-  if (typeFace) return `font-family: var(--font-${typeFace[1]}, ${typeFace[1]});`
+  if (typeFace) return `font-family: ${resolveValue(typeFace[1],'font')};`
 
   const typeSize = className.match(/^type-size:(.+)$/)
-  if (typeSize) return `font-size: var(--text-${typeSize[1]}-size, ${typeSize[1]});`
+  if (typeSize) return `font-size: ${resolveValue(typeSize[1],'text')};`
 
-  const typeWeight = className.match(/^type-weight:(\d+)$/)
+  const typeWeight = className.match(/^type-weight:(.+)$/)
   if (typeWeight) return `font-weight: ${typeWeight[1]};`
+
+  const typeStyle = className.match(/^type-style:(.+)$/)
+  if (typeStyle) return `font-style: ${typeStyle[1]};`
 
   const typeStretch = className.match(/^type-stretch:(.+)$/)
   if (typeStretch) return `font-stretch: ${typeStretch[1]};`
@@ -753,7 +826,7 @@ export function resolveClass(className, tokens = {}) {
   if (typeKern) return `font-kerning: ${typeKern[1]};`
 
   const typeFeature = className.match(/^type-feature:(.+)$/)
-  if (typeFeature) return `font-feature-settings: "${typeFeature[1].replace(/_/g, ' ')}";`
+  if (typeFeature) return `font-feature-settings: "${typeFeature[1].replace(/_/g,' ')}";`
 
   const typeVariation = className.match(/^type-variation:(.+)$/)
   if (typeVariation) return `font-variation-settings: "${typeVariation[1]}";`
@@ -761,32 +834,32 @@ export function resolveClass(className, tokens = {}) {
   const typeSizeAdjust = className.match(/^type-size-adjust:(.+)$/)
   if (typeSizeAdjust) return `font-size-adjust: ${typeSizeAdjust[1]};`
 
-  const typeLang = className.match(/^type-lang:(.+)$/)
-  if (typeLang) return `font-language-override: "${typeLang[1]}";`
-
   // ── LEADING / TRACKING ──
   const leading = className.match(/^leading:(.+)$/)
-  if (leading) return `line-height: var(--leading-${leading[1]}, ${leading[1]});`
+  if (leading) return `line-height: ${resolveValue(leading[1],'leading')};`
 
   const tracking = className.match(/^tracking:(.+)$/)
-  if (tracking) return `letter-spacing: var(--tracking-${tracking[1]}, ${tracking[1]});`
+  if (tracking) return `letter-spacing: ${resolveValue(tracking[1],'tracking')};`
 
   const wordGap = className.match(/^word-gap:(.+)$/)
   if (wordGap) return `word-spacing: ${wordGap[1]};`
 
   const indent = className.match(/^indent:(.+)$/)
-  if (indent) return `text-indent: var(--spacing-${indent[1]}, ${indent[1]});`
+  if (indent) return `text-indent: ${resolveValue(indent[1],'spacing')};`
 
   const tab = className.match(/^tab:(.+)$/)
   if (tab) return `tab-size: ${tab[1]};`
 
-  // ── TEXT (typography token) ──
+  // ── TEXT composite (size + weight + line from token) ──
   const text = className.match(/^text:(.+)$/)
-  if (text) return `font-size: var(--text-${text[1]}-size); font-weight: var(--text-${text[1]}-weight); line-height: var(--text-${text[1]}-line);`
+  if (text) {
+    if (isRawCSSValue(text[1])) return `font-size: ${text[1]};`
+    return `font-size: var(--text-${text[1]}-size); font-weight: var(--text-${text[1]}-weight); line-height: var(--text-${text[1]}-line);`
+  }
 
   // ── TEXT DECORATION ──
   const textDecorColor = className.match(/^text-decor-color:(.+)$/)
-  if (textDecorColor) return `text-decoration-color: var(--color-${textDecorColor[1]});`
+  if (textDecorColor) return `text-decoration-color: ${resolveValue(textDecorColor[1],'color')};`
 
   const textDecorWidth = className.match(/^text-decor-width:(.+)$/)
   if (textDecorWidth) return `text-decoration-thickness: ${textDecorWidth[1]};`
@@ -795,10 +868,13 @@ export function resolveClass(className, tokens = {}) {
   if (textUnderOffset) return `text-underline-offset: ${textUnderOffset[1]};`
 
   const textEmphasisColor = className.match(/^text-emphasis-color:(.+)$/)
-  if (textEmphasisColor) return `text-emphasis-color: var(--color-${textEmphasisColor[1]});`
+  if (textEmphasisColor) return `text-emphasis-color: ${resolveValue(textEmphasisColor[1],'color')};`
 
-  const textShadow = className.match(/^cast-text:(.+)$/)
-  if (textShadow) return `text-shadow: var(--shadow-${textShadow[1]});`
+  const textStroke = className.match(/^text-stroke:(.+)$/)
+  if (textStroke) return `-webkit-text-stroke: ${textStroke[1].replace(/_/g,' ')};`
+
+  const textStrokeColor = className.match(/^text-stroke-color:(.+)$/)
+  if (textStrokeColor) return `-webkit-text-stroke-color: ${resolveValue(textStrokeColor[1],'color')};`
 
   // ── MOVE (transforms) ──
   const moveX = className.match(/^move-x:(.+)$/)
@@ -810,14 +886,20 @@ export function resolveClass(className, tokens = {}) {
   const moveZ = className.match(/^move-z:(.+)$/)
   if (moveZ) return `transform: translateZ(${moveZ[1]});`
 
+  const move3d = className.match(/^move-3d:(.+)$/)
+  if (move3d) return `transform: translate3d(${move3d[1].replace(/_/g,',')});`
+
   const move = className.match(/^move:(.+)$/)
-  if (move) return `transform: translate(${move[1].replace(/_/g, ', ')});`
+  if (move) return `transform: translate(${move[1].replace(/_/g,',')});`
 
   const spinX = className.match(/^spin-x:(.+)$/)
   if (spinX) return `transform: rotateX(${spinX[1]});`
 
   const spinY = className.match(/^spin-y:(.+)$/)
   if (spinY) return `transform: rotateY(${spinY[1]});`
+
+  const spinZ = className.match(/^spin-z:(.+)$/)
+  if (spinZ) return `transform: rotateZ(${spinZ[1]});`
 
   const spin = className.match(/^spin:(.+)$/)
   if (spin) return `transform: rotate(${spin[1]});`
@@ -838,59 +920,77 @@ export function resolveClass(className, tokens = {}) {
   if (skewY) return `transform: skewY(${skewY[1]});`
 
   const origin = className.match(/^origin:(.+)$/)
-  if (origin) return `transform-origin: ${origin[1].replace(/_/g, ' ')};`
+  if (origin) return `transform-origin: ${origin[1].replace(/_/g,' ')};`
 
   const depthView = className.match(/^depth-view:(.+)$/)
   if (depthView) return `perspective: ${depthView[1]};`
 
+  const depthOrigin = className.match(/^depth-origin:(.+)$/)
+  if (depthOrigin) return `perspective-origin: ${depthOrigin[1].replace(/_/g,' ')};`
+
   // ── EASE (transition) ──
   const easeProp = className.match(/^ease-prop:(.+)$/)
-  if (easeProp) return `transition-property: ${easeProp[1]};`
+  if (easeProp) return `transition-property: ${easeProp[1].replace(/_/g,' ')};`
 
   const easeSpeed = className.match(/^ease-speed:(.+)$/)
-  if (easeSpeed) return `transition-duration: var(--duration-${easeSpeed[1]}, ${easeSpeed[1]});`
+  if (easeSpeed) return `transition-duration: ${resolveValue(easeSpeed[1],'duration')};`
 
   const easeCurve = className.match(/^ease-curve:(.+)$/)
-  if (easeCurve) return `transition-timing-function: var(--ease-${easeCurve[1]}, ${easeCurve[1]});`
+  if (easeCurve) return `transition-timing-function: ${resolveValue(easeCurve[1],'ease')};`
 
   const easeWait = className.match(/^ease-wait:(.+)$/)
-  if (easeWait) return `transition-delay: var(--duration-${easeWait[1]}, ${easeWait[1]});`
+  if (easeWait) return `transition-delay: ${resolveValue(easeWait[1],'duration')};`
 
   const ease = className.match(/^ease:(.+)$/)
-  if (ease) return `transition: all var(--duration-${ease[1]}, 0.3s) ease;`
+  if (ease) return `transition: all ${resolveValue(ease[1],'duration')} ease;`
 
   // ── PLAY (CSS animation) ──
   const playName = className.match(/^play-name:(.+)$/)
   if (playName) return `animation-name: ${playName[1]};`
 
   const playSpeed = className.match(/^play-speed:(.+)$/)
-  if (playSpeed) return `animation-duration: var(--duration-${playSpeed[1]}, ${playSpeed[1]});`
+  if (playSpeed) return `animation-duration: ${resolveValue(playSpeed[1],'duration')};`
+
+  const playCurve = className.match(/^play-curve:(.+)$/)
+  if (playCurve) return `animation-timing-function: ${resolveValue(playCurve[1],'ease')};`
 
   const playLoop = className.match(/^play-loop:(.+)$/)
   if (playLoop) return `animation-iteration-count: ${playLoop[1]};`
 
   const playWait = className.match(/^play-wait:(.+)$/)
-  if (playWait) return `animation-delay: var(--duration-${playWait[1]}, ${playWait[1]});`
+  if (playWait) return `animation-delay: ${resolveValue(playWait[1],'duration')};`
 
   const playState = className.match(/^play-state:(.+)$/)
   if (playState) return `animation-play-state: ${playState[1]};`
 
+  const playFill = className.match(/^play-fill:(.+)$/)
+  if (playFill) return `animation-fill-mode: ${playFill[1]};`
+
+  const playDir = className.match(/^play-dir:(.+)$/)
+  if (playDir) return `animation-direction: ${playDir[1]};`
+
   // ── SCROLL ──
   const scrollPad = className.match(/^scroll-pad:(.+)$/)
-  if (scrollPad) return `scroll-padding: var(--spacing-${scrollPad[1]});`
+  if (scrollPad) return `scroll-padding: ${resolveValue(scrollPad[1],'spacing')};`
 
   const scrollMar = className.match(/^scroll-mar:(.+)$/)
-  if (scrollMar) return `scroll-margin: var(--spacing-${scrollMar[1]});`
+  if (scrollMar) return `scroll-margin: ${resolveValue(scrollMar[1],'spacing')};`
 
   const scrollTimeline = className.match(/^scroll-timeline:(.+)$/)
   if (scrollTimeline) return `scroll-timeline-name: --${scrollTimeline[1]};`
+
+  const scrollPadX = className.match(/^scroll-pad-x:(.+)$/)
+  if (scrollPadX) { const v=resolveValue(scrollPadX[1],'spacing'); return `scroll-padding-left: ${v}; scroll-padding-right: ${v};` }
+
+  const scrollPadY = className.match(/^scroll-pad-y:(.+)$/)
+  if (scrollPadY) { const v=resolveValue(scrollPadY[1],'spacing'); return `scroll-padding-top: ${v}; scroll-padding-bottom: ${v};` }
 
   // ── FRAME (container) ──
   const frameName = className.match(/^frame-name:(.+)$/)
   if (frameName) return `container-name: ${frameName[1]};`
 
   const frameSize = className.match(/^frame-size:(.+)$/)
-  if (frameSize) return `contain-intrinsic-size: ${frameSize[1].replace(/_/g, ' ')};`
+  if (frameSize) return `contain-intrinsic-size: ${frameSize[1].replace(/_/g,' ')};`
 
   const frameSizeW = className.match(/^frame-size-w:(.+)$/)
   if (frameSizeW) return `contain-intrinsic-width: ${frameSizeW[1]};`
@@ -902,18 +1002,21 @@ export function resolveClass(className, tokens = {}) {
   const sceneName = className.match(/^scene-name:(.+)$/)
   if (sceneName) return `view-transition-name: ${sceneName[1]};`
 
+  const sceneClass = className.match(/^scene-class:(.+)$/)
+  if (sceneClass) return `view-transition-class: ${sceneClass[1]};`
+
   // ── BAR (scrollbar) ──
   const barColor = className.match(/^bar-color:(.+)$/)
   if (barColor) {
     const parts = barColor[1].split('_')
-    const track = parts[0]
-    const thumb = parts[1] || parts[0]
-    return `scrollbar-color: var(--color-${thumb}) var(--color-${track});`
+    const thumb = resolveValue(parts[0],'color')
+    const track = resolveValue(parts[1] || parts[0],'color')
+    return `scrollbar-color: ${thumb} ${track};`
   }
 
   // ── PATH (motion path) ──
   const pathProp = className.match(/^path:(.+)$/)
-  if (pathProp) return `offset-path: ${pathProp[1].replace(/_/g, ' ')};`
+  if (pathProp) return `offset-path: ${pathProp[1].replace(/_/g,' ')};`
 
   const pathDist = className.match(/^path-dist:(.+)$/)
   if (pathDist) return `offset-distance: ${pathDist[1]};`
@@ -922,60 +1025,150 @@ export function resolveClass(className, tokens = {}) {
   if (pathSpin) return `offset-rotate: ${pathSpin[1]};`
 
   const pathAnchor = className.match(/^path-anchor:(.+)$/)
-  if (pathAnchor) return `offset-anchor: ${pathAnchor[1].replace(/_/g, ' ')};`
+  if (pathAnchor) return `offset-anchor: ${pathAnchor[1].replace(/_/g,' ')};`
+
+  const pathPos = className.match(/^path-pos:(.+)$/)
+  if (pathPos) return `offset-position: ${pathPos[1].replace(/_/g,' ')};`
 
   // ── SHAPE ──
   const shapeMar = className.match(/^shape-mar:(.+)$/)
-  if (shapeMar) return `shape-margin: var(--spacing-${shapeMar[1]}, ${shapeMar[1]});`
+  if (shapeMar) return `shape-margin: ${resolveValue(shapeMar[1],'spacing')};`
 
   const shapeImg = className.match(/^shape-img:(.+)$/)
   if (shapeImg) return `shape-image-threshold: ${shapeImg[1]};`
 
+  const shapeOut = className.match(/^shape:(.+)$/)
+  if (shapeOut) return `shape-outside: ${shapeOut[1].replace(/_/g,' ')};`
+
   // ── SVG ──
   const svgStroke = className.match(/^svg-stroke:(.+)$/)
-  if (svgStroke) return `stroke: var(--color-${svgStroke[1]});`
+  if (svgStroke) return `stroke: ${resolveValue(svgStroke[1],'color')};`
 
   const svgStrokeWidth = className.match(/^svg-stroke-width:(.+)$/)
   if (svgStrokeWidth) return `stroke-width: ${svgStrokeWidth[1]};`
 
   const svgStrokeDash = className.match(/^svg-stroke-dash:(.+)$/)
-  if (svgStrokeDash) return `stroke-dasharray: ${svgStrokeDash[1].replace(/_/g, ' ')};`
+  if (svgStrokeDash) return `stroke-dasharray: ${svgStrokeDash[1].replace(/_/g,' ')};`
 
   const svgStrokeOffset = className.match(/^svg-stroke-offset:(.+)$/)
   if (svgStrokeOffset) return `stroke-dashoffset: ${svgStrokeOffset[1]};`
 
-  const svgFillFade = className.match(/^ink-fill-fade:(.+)$/)
-  if (svgFillFade) return `fill-opacity: ${svgFillFade[1]};`
-
   const svgStrokeFade = className.match(/^svg-stroke-fade:(.+)$/)
   if (svgStrokeFade) return `stroke-opacity: ${svgStrokeFade[1]};`
 
-  // ── ANCHOR POSITIONING ──
+  const svgFill = className.match(/^ink-fill:(.+)$/)
+  if (svgFill) return `fill: ${resolveValue(svgFill[1],'color')};`
+
+  const svgFillFade = className.match(/^ink-fill-fade:(.+)$/)
+  if (svgFillFade) return `fill-opacity: ${svgFillFade[1]};`
+
+  // ── ANCHOR ──
   const anchorName = className.match(/^anchor-name:(.+)$/)
   if (anchorName) return `anchor-name: --${anchorName[1]};`
 
   const anchorScope = className.match(/^anchor-scope:(.+)$/)
   if (anchorScope) return `anchor-scope: --${anchorScope[1]};`
 
-  // ── WILL CHANGE ──
+  // ── RUBY ──
+  const rubyAlign = className.match(/^ruby-align:(.+)$/)
+  if (rubyAlign) return `ruby-align: ${rubyAlign[1]};`
+
+  const rubyPos = className.match(/^ruby-pos:(.+)$/)
+  if (rubyPos) return `ruby-position: ${rubyPos[1]};`
+
+  // ── IMAGE ──
+  const imgOrient = className.match(/^img-orient:(.+)$/)
+  if (imgOrient) return `image-orientation: ${imgOrient[1]};`
+
+  // ── COLUMN (multi-col) ──
+  const cols = className.match(/^cols:(.+)$/)
+  if (cols) return `columns: ${cols[1]};`
+
+  const colCount = className.match(/^col-count:(.+)$/)
+  if (colCount) return `column-count: ${colCount[1]};`
+
+  const colWidth = className.match(/^col-width:(.+)$/)
+  if (colWidth) return `column-width: ${resolveValue(colWidth[1],'spacing')};`
+
+  const colGap = className.match(/^col-gap:(.+)$/)
+  if (colGap) return `column-gap: ${resolveValue(colGap[1],'spacing')};`
+
+  const colRule = className.match(/^col-rule:(.+)$/)
+  if (colRule) return `column-rule: ${colRule[1].replace(/_/g,' ')};`
+
+  const colSpan = className.match(/^col-span:(.+)$/)
+  if (colSpan) return `column-span: ${colSpan[1]};`
+
+  // ── COUNTER ──
+  const counterReset = className.match(/^counter-reset:(.+)$/)
+  if (counterReset) return `counter-reset: ${counterReset[1]};`
+
+  const counterInc = className.match(/^counter-inc:(.+)$/)
+  if (counterInc) return `counter-increment: ${counterInc[1]};`
+
+  // ── MISC ──
   const will = className.match(/^will:(.+)$/)
   if (will) return `will-change: ${will[1]};`
 
-  // ── CONTENT ──
   const content = className.match(/^content:(.+)$/)
   if (content) return `content: "${content[1]}";`
+
+  const fieldSize = className.match(/^field-size:(.+)$/)
+  if (fieldSize) return `field-sizing: ${fieldSize[1]};`
+
+  const caretShape = className.match(/^cursor-shape:(.+)$/)
+  if (caretShape) return `caret-shape: ${caretShape[1]};`
+
+  const highlight = className.match(/^highlight:(.+)$/)
+  if (highlight) return `/* ::highlight(${highlight[1]}) — apply via CSS */`
+
+  const orphans = className.match(/^orphans:(.+)$/)
+  if (orphans) return `orphans: ${orphans[1]};`
+
+  const widows = className.match(/^widows:(.+)$/)
+  if (widows) return `widows: ${widows[1]};`
+
+  const quotes = className.match(/^quotes:(.+)$/)
+  if (quotes) return `quotes: ${quotes[1].replace(/_/g,' ')};`
 
   // ── STATIC MAP fallback ──
   return STATIC_MAP[className] || null
 }
 
-// Helper: resolve a value as a token or pass through as raw
+// Helper: resolve a value as a token var() or pass through as raw CSS
 function resolveValue(val, tokenGroup) {
-  // If it looks like a token name (no units, no spaces)
-  if (/^[a-zA-Z0-9-]+$/.test(val) && !val.includes('px') && !val.includes('%')) {
-    return `var(--${tokenGroup}-${val}, ${val})`
-  }
-  return val
+  if (isRawCSSValue(val)) return val
+  return `var(--${tokenGroup}-${val})`
+}
+
+// Detect if a value is a raw CSS value vs a token name
+function isRawCSSValue(val) {
+  if (typeof val !== 'string') return false
+  return (
+    /^-?[0-9]/.test(val)     ||  // starts with digit: 20px, 1.5, -8px
+    val.includes('px')        ||  // pixel unit
+    val.includes('rem')       ||  // rem unit
+    val.includes('em')        ||  // em unit (catches rem too — fine)
+    val.includes('%')         ||  // percentage
+    val.includes('vw')        ||  // viewport units
+    val.includes('vh')        ||
+    val.includes('vmin')      ||
+    val.includes('vmax')      ||
+    val.includes('calc(')     ||  // css functions
+    val.includes('clamp(')    ||
+    val.includes('min(')      ||
+    val.includes('max(')      ||
+    val.includes('var(')      ||  // already a css var
+    val.includes('#')         ||  // hex color
+    val.startsWith('rgb')     ||  // rgb/rgba
+    val.startsWith('hsl')     ||  // hsl/hsla
+    val.startsWith('linear-gradient') ||
+    val.startsWith('radial-gradient') ||
+    val === 'auto'            ||
+    val === 'inherit'         ||
+    val === 'initial'         ||
+    val === 'unset'
+  )
 }
 
 // ============================================================
