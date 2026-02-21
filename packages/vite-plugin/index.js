@@ -4,6 +4,7 @@ import fs                from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import Mizumi            from '../core/index.js'
 import { resolveClass }  from '../core/class-resolver.js'
+import { loadMizuFiles, mergeMizuConfigs } from '../core/mizu-parser.js'
 
 // ── Escape CSS identifier characters ───────────────────────
 function escapeCSSIdent(str) {
@@ -107,7 +108,18 @@ async function scanAndGenerate(root) {
 async function buildMizumi(configPath, outputDir, root) {
   try {
     const mod    = await import(pathToFileURL(configPath).href + `?t=${Date.now()}`)
-    const config = mod.default || mod
+    let config   = mod.default || mod
+    
+    // Merge any .mizu files found in the project
+    const mizuConfig = loadMizuFiles(root)
+    if (
+      Object.keys(mizuConfig.tokens).length > 0 ||
+      Object.keys(mizuConfig.patterns).length > 0 ||
+      Object.keys(mizuConfig.animations).length > 0
+    ) {
+      config = mergeMizuConfigs(config, mizuConfig)
+      console.log('🌊 Mizumi: .mizu files merged')
+    }
     const mz     = new Mizumi(config)
 
     // Base CSS from tokens/patterns
@@ -161,6 +173,7 @@ function mizumiPlugin(options = {}) {
       if (!configPath || !fs.existsSync(configPath)) return
 
       server.watcher.add(configPath)
+      server.watcher.add(path.join(root, '**/*.mizu'))
 
       const rebuild = async (file) => {
         console.log('🌊 Mizumi: rebuilding...')
@@ -169,7 +182,7 @@ function mizumiPlugin(options = {}) {
       }
 
       server.watcher.on('change', async (file) => {
-        if (file === configPath || /\.(jsx?|tsx?|html|vue|svelte)$/.test(file)) {
+        if (file === configPath || /\.(jsx?|tsx?|html|vue|svelte|mizu)$/.test(file)) {
           await rebuild(file)
         }
       })

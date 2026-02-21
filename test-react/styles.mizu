@@ -1,0 +1,16 @@
+@token {
+  colors {
+    brand: #ff6b6b;
+    ocean: #006994;
+  }
+  spacing {
+    hero: 120px;
+  }
+}
+
+@pattern hero-box {
+  pad: hero;
+  paint: brand;
+  ink: white;
+  curve: xl;
+}

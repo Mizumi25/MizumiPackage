@@ -10,6 +10,8 @@ import Mizumi           from '../core/index.js'
 import path             from 'node:path'
 import fs               from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { resolveClass } from '../core/class-resolver.js'
+
 
 const args    = process.argv.slice(2)
 const command = args[0]
@@ -41,6 +43,82 @@ async function loadConfig(configFile = 'mizumi.config.js') {
 
   return config
 }
+
+
+function escapeCSSIdent(str) {
+  return str.replace(/([^a-zA-Z0-9_\-])/g, '\\$1')
+}
+
+const CLASS_RE = /(?:className|class)\s*=\s*(?:"([^"]*?)"|'([^']*?)'|`([^`]*?)`)/g
+
+function extractTokens(source) {
+  const tokens = new Set()
+  for (const m of source.matchAll(CLASS_RE)) {
+    const raw = m[1] || m[2] || m[3] || ''
+    raw.split(/\s+/).filter(Boolean).forEach(t => tokens.add(t))
+  }
+  return tokens
+}
+
+function walkDir(dir, exts) {
+  const results = []
+  const extSet  = new Set(exts)
+  if (!fs.existsSync(dir)) return results
+
+  function walk(current) {
+    let entries
+    try { entries = fs.readdirSync(current, { withFileTypes: true }) }
+    catch { return }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name)
+      if (entry.isDirectory()) {
+        if (!entry.name.startsWith('.') && entry.name !== 'node_modules') walk(full)
+      } else if (entry.isFile()) {
+        const ext = entry.name.split('.').pop()
+        if (extSet.has(ext)) results.push(full)
+      }
+    }
+  }
+  walk(dir)
+  return results
+}
+
+function isNonCSSClass(token) {
+  const skip = ['animate-','hover-','active-','scroll-','stagger-','focus-','duration-','delay-','ease-']
+  const variants = ['sm:','md:','lg:','xl:','2xl:','dark:','hover:','focus:','active:','disabled:','motion-safe:','motion-reduce:','print:']
+  if (skip.some(p => token.startsWith(p))) return true
+  if (variants.some(p => token.startsWith(p))) return true
+  if (!token.includes(':') && !token.includes('{')) return true
+  return false
+}
+
+function scanAndGenerateCSS(root) {
+  const exts    = ['html', 'htm', 'jsx', 'tsx', 'js', 'ts', 'vue', 'svelte']
+  const files   = walkDir(root, exts)
+  const allToks = new Set()
+
+  for (const file of files) {
+    if (file.includes('node_modules') || file.includes('.mizumi')) continue
+    try {
+      extractTokens(fs.readFileSync(file, 'utf8')).forEach(t => allToks.add(t))
+    } catch { /* skip */ }
+  }
+
+  const lines = []
+  const seen  = new Set()
+
+  for (const token of allToks) {
+    if (seen.has(token) || isNonCSSClass(token)) continue
+    seen.add(token)
+    const css = resolveClass(token)
+    if (css) lines.push(`.${escapeCSSIdent(token)} { ${css} }`)
+  }
+
+  console.log(`   Scanned ${files.length} files, ${lines.length} arbitrary classes found`)
+  return lines.join('\n')
+}
+
+
 
 const commands = {
 
@@ -256,9 +334,48 @@ export default {
   async build() {
     console.log('🌊 Mizumi: Building...\n')
     try {
+      const cwd     = process.cwd()
       const config  = await loadConfig()
       const mizumi  = new Mizumi(config)
-      const outputs = mizumi.build('.mizumi')
+      const outDir  = '.mizumi'
+
+      // Generate base CSS from tokens/patterns
+      let css = mizumi.generateCSS()
+
+      // Scan source files and append arbitrary classes
+      const scanned = scanAndGenerateCSS(cwd)
+      if (scanned) {
+        css += '\n\n/* ===== SCANNED ARBITRARY CLASSES ===== */\n' + scanned
+      }
+
+      // Write all outputs
+      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true })
+
+      fs.writeFileSync(path.join(outDir, 'mizumi.css'), css)
+      console.log(`✅ CSS:     ${path.join(outDir, 'mizumi.css')} (${(Buffer.byteLength(css)/1024).toFixed(2)} KB)`)
+
+      const js = mizumi.generateRuntimeScript()
+      fs.writeFileSync(path.join(outDir, 'mizumi-runtime.js'), js)
+      console.log(`✅ Runtime: ${path.join(outDir, 'mizumi-runtime.js')} (${(Buffer.byteLength(js)/1024).toFixed(2)} KB)`)
+
+      const dts = mizumi.typesGenerator.generateDTS()
+      fs.writeFileSync(path.join(outDir, 'mizumi.d.ts'), dts)
+      console.log(`✅ Types:   ${path.join(outDir, 'mizumi.d.ts')} (${(Buffer.byteLength(dts)/1024).toFixed(2)} KB)`)
+
+      const helpers = mizumi.typesGenerator.generateHelpers()
+      fs.writeFileSync(path.join(outDir, 'mizumi-helpers.js'), helpers)
+      console.log(`✅ Helpers: ${path.join(outDir, 'mizumi-helpers.js')} (${(Buffer.byteLength(helpers)/1024).toFixed(2)} KB)`)
+
+      const meta = JSON.stringify({
+        tokens:    config.tokens,
+        patterns:  config.patterns,
+        animations:config.animations,
+        rules:     config.rules,
+        generated: new Date().toISOString()
+      }, null, 2)
+      fs.writeFileSync(path.join(outDir, 'mizumi.meta.json'), meta)
+      console.log(`✅ Meta:    ${path.join(outDir, 'mizumi.meta.json')} (${(Buffer.byteLength(meta)/1024).toFixed(2)} KB)`)
+
       console.log('\n✅ Build complete')
     } catch (err) {
       console.error('❌ Build failed:', err.message)
