@@ -333,6 +333,7 @@ export default {
     print:       false,
     motion:      true,
     orientation: false,
+    states: true,
 
     breakpoints: {
       sm:    '640px',

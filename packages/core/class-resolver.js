@@ -1137,37 +1137,40 @@ export function resolveClass(className, tokens = {}) {
 
 // Helper: resolve a value as a token var() or pass through as raw CSS
 function resolveValue(val, tokenGroup) {
-  if (isRawCSSValue(val)) return val
+  if (isRawCSSValue(val)) {
+    return val.replace(/_/g, ' ')   // underscores → spaces: 0_20px → 0 20px
+  }
   return `var(--${tokenGroup}-${val})`
 }
 
 // Detect if a value is a raw CSS value vs a token name
 function isRawCSSValue(val) {
   if (typeof val !== 'string') return false
+  const v = val.replace(/_/g, ' ')   // normalise underscore-spaces first
   return (
-    /^-?[0-9]/.test(val)     ||  // starts with digit: 20px, 1.5, -8px
-    val.includes('px')        ||  // pixel unit
-    val.includes('rem')       ||  // rem unit
-    val.includes('em')        ||  // em unit (catches rem too — fine)
-    val.includes('%')         ||  // percentage
-    val.includes('vw')        ||  // viewport units
-    val.includes('vh')        ||
-    val.includes('vmin')      ||
-    val.includes('vmax')      ||
-    val.includes('calc(')     ||  // css functions
-    val.includes('clamp(')    ||
-    val.includes('min(')      ||
-    val.includes('max(')      ||
-    val.includes('var(')      ||  // already a css var
-    val.includes('#')         ||  // hex color
-    val.startsWith('rgb')     ||  // rgb/rgba
-    val.startsWith('hsl')     ||  // hsl/hsla
-    val.startsWith('linear-gradient') ||
-    val.startsWith('radial-gradient') ||
-    val === 'auto'            ||
-    val === 'inherit'         ||
-    val === 'initial'         ||
-    val === 'unset'
+    /^-?[0-9]/.test(v)       ||  // starts with digit: 20px, 1.5, -8px
+    v.includes('px')        ||  // pixel unit
+    v.includes('rem')       ||  // rem unit
+    v.includes('em')        ||  // em unit (catches rem too — fine)
+    v.includes('%')         ||  // percentage
+    v.includes('vw')        ||  // viewport units
+    v.includes('vh')        ||
+    v.includes('vmin')      ||
+    v.includes('vmax')      ||
+    v.includes('calc(')     ||  // css functions
+    v.includes('clamp(')    ||
+    v.includes('min(')      ||
+    v.includes('max(')      ||
+    v.includes('var(')      ||  // already a css var
+    v.includes('#')         ||  // hex color
+    v.startsWith('rgb')     ||  // rgb/rgba
+    v.startsWith('hsl')     ||  // hsl/hsla
+    v.startsWith('linear-gradient') ||
+    v.startsWith('radial-gradient') ||
+    v === 'auto'            ||
+    v === 'inherit'         ||
+    v === 'initial'         ||
+    v === 'unset'
   )
 }
 

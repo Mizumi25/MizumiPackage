@@ -77,7 +77,7 @@ export class AnimationEngine {
 
   // Resolve a token name to a CSS var, or pass raw values through directly
   function tok(value, category) {
-    if (isRawValue(value)) return value
+    if (isRawValue(value)) return value.replace(/_/g, ' ')  // ← add this
     return 'var(--' + category + '-' + value + ')'
   }
 

@@ -1,56 +1,59 @@
 // packages/cli/watcher.js
-import fs from 'fs';
-import path from 'path';
-import { DocsGenerator } from './docs-generator.js';
-import Mizumi from '../core/index.js';
+import path     from 'node:path'
+import { createRequire } from 'node:module'
 
-
-function watch() {
-  const configPath = path.join(process.cwd(), 'mizumi.config.js');
-  const outDir     = path.join(process.cwd(), '.mizumi');
-
-  if (!fs.existsSync(configPath)) {
-    console.error('❌ mizumi.config.js not found! Run: node mizumi init');
-    process.exit(1);
-  }
-
-  console.log('🌊 Mizumi watching for changes...');
-  console.log(`   Watching: mizumi.config.js`);
-  console.log('   Press Ctrl+C to stop\n');
-
-  // Run initial build
-  runBuild(configPath, outDir);
-
-  // Watch the config file
-  const watcher = chokidar.watch(configPath, {
-    persistent: true,
-    ignoreInitial: true
-  });
-
-  watcher.on('change', () => {
-    console.log('\n📝 Config changed! Rebuilding...');
-    runBuild(configPath, outDir);
-  });
-
-  watcher.on('error', err => {
-    console.error('❌ Watcher error:', err);
-  });
+// chokidar is CJS — load via createRequire in ESM
+const require = createRequire(import.meta.url)
+let chokidar
+try {
+  chokidar = require('chokidar')
+} catch {
+  chokidar = null
 }
 
-function runBuild(configPath, outDir) {
-  try {
-    // Clear require cache so config changes are picked up
-    delete require.cache[require.resolve(configPath)];
+/**
+ * watch(loadConfig, Mizumi)
+ * Called from cli/index.js after an initial build.
+ */
+export async function watch(loadConfig, Mizumi) {
+  const cwd        = process.cwd()
+  const configPath = path.join(cwd, 'mizumi.config.js')
+  const outDir     = path.join(cwd, '.mizumi')
 
-    const config = require(configPath);
-    const mizumi = new Mizumi(config);
-    mizumi.build(outDir);
-
-    console.log(`⏰ ${new Date().toLocaleTimeString()} — Ready!\n`);
-  } catch (err) {
-    console.error('❌ Build failed:', err.message);
-    console.log('   Fix the error and save again...\n');
+  if (!chokidar) {
+    console.error('❌ chokidar not installed — run: npm install chokidar')
+    process.exit(1)
   }
-}
 
-export { watch };
+  const patterns = [
+    configPath,
+    path.join(cwd, '**/*.mizu'),
+  ]
+
+  console.log('🌊 Mizumi watching for changes...')
+  console.log('   Watching: mizumi.config.js + **/*.mizu')
+  console.log('   Press Ctrl+C to stop\n')
+
+  const watcher = chokidar.watch(patterns, {
+    persistent:    true,
+    ignoreInitial: true,
+    ignored:       /node_modules/,
+  })
+
+  const rebuild = async (filePath) => {
+    console.log('\n📝 Changed: ' + path.relative(cwd, filePath) + ' — rebuilding...')
+    try {
+      const config = await loadConfig()
+      const mizumi = new Mizumi(config)
+      mizumi.build(outDir)
+      console.log('⏰ ' + new Date().toLocaleTimeString() + ' — Ready!\n')
+    } catch (err) {
+      console.error('❌ Build failed:', err.message)
+      console.log('   Fix the error and save again...\n')
+    }
+  }
+
+  watcher.on('change', rebuild)
+  watcher.on('add',    rebuild)
+  watcher.on('error',  err => console.error('❌ Watcher error:', err))
+}

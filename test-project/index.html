@@ -5,102 +5,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
   <script src=".mizumi/mizumi-runtime.js"></script>
-  <style>
-    body { font-family: sans-serif; background: #F9FAFB; }
-  </style>
-</head>
 <body>
-
-  <!-- Entrance animation -->
-  <div class="card animate-fade-in" style="margin: 40px auto; max-width: 400px;">
-    <h2 class="text-h2">Fade In Card</h2>
-    <p>Using: card + animate-fade-in</p>
-  </div>
-
-  <!-- Hover animation -->
-  <div class="card hover-lift active-press" style="margin: 20px auto; max-width: 400px; cursor: pointer;">
-    <h2 class="text-h2">Hover Me!</h2>
-    <p>Using: card + hover-lift + active-press</p>
-  </div>
-
-  <!-- With modifiers -->
-  <div class="card animate-slide-up duration-1000 ease-bouncy" style="margin: 20px auto; max-width: 400px;">
-    <h2 class="text-h2">Bouncy Slide Up</h2>
-    <p>Using: animate-slide-up + duration-1000 + ease-bouncy</p>
-  </div>
-
-  <!-- Data attribute override -->
-  <div 
-    class="card animate-scale-in"
-    data-gsap-duration="2000"
-    data-gsap-ease="elastic.out(1, 0.3)"
-    style="margin: 20px auto; max-width: 400px;"
-  >
-    <h2 class="text-h2">Custom Data Attrs</h2>
-    <p>2000ms + elastic ease via data-gsap-*</p>
-  </div>
-
-  <!-- Stagger -->
-  <div class="stagger-children-100" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; max-width: 700px; margin: 20px auto;">
-    <div class="card">Item 1</div>
-    <div class="card">Item 2</div>
-    <div class="card">Item 3</div>
-  </div>
-
-  <!-- Buttons -->
-  <div class="flex-center" style="gap: 16px; margin: 40px auto;">
-    <button class="btn-primary hover-lift active-press">Primary</button>
-    <button class="btn-secondary hover-scale active-press">Secondary</button>
-    <button class="btn-ghost hover-glow">Ghost Glow</button>
-  </div>
-  
-  
-  
-  
-  
-<!-- RESPONSIVE TEST -->
-<div class="flex-col md:flex-between" style="gap:16px; max-width:700px; margin:20px auto;">
-  <div class="card">Stacks mobile → row on md+</div>
-  <div class="card">Card 2</div>
-</div>
-
-<!-- STATE VARIANT TEST -->
-<button class="btn-primary hover:bg-primary-600 active:bg-primary-900"
-  style="display:block; margin:20px auto;">
-  Hover and Click Me
-</button>
-
-<!-- DARK MODE TEST -->
-<button
-  onclick="document.documentElement.classList.toggle('dark')"
-  class="btn-secondary"
-  style="display:block; margin:20px auto;">
-  Toggle Dark Mode
-</button>
-
-<div class="card dark:bg-neutral-900 dark:color-neutral-50"
-  style="max-width:400px; margin:20px auto;">
-  I change in dark mode!
-</div>
-
-
-<!-- Shows/hides based on screen size -->
-<div class="card" style="max-width:400px; margin:20px auto;">
-  <p>This text is: 
-    <span class="block md:hidden" style="color:red;">MOBILE (below 768px)</span>
-    <span class="hidden md:block" style="color:green;">DESKTOP (768px+)</span>
-  </p>
-</div>
-
-
-
-<script src=".mizumi/mizumi-helpers.js"></script>
-<script>
-  // Test mz() helper
-  const classes = mz('card', 'animate-fade-in', true && 'hover-lift', false && 'hidden');
-  console.log('mz() result:', classes);
-  // Expected: "card animate-fade-in hover-lift"
-</script>
-
+  <div class="
+    paint{#d91818} ink{#f0f0f0}
+    pad{clamp(1rem,4vw,3rem)}
+    canvas-w{min(100%,1400px)} mar-x{auto}
+    curve{24px} cast{0_20px_60px_rgba(0,0,0,0.4)}
+    type-face{serif} type-size{clamp(3rem,8vw,8rem)}
+    tracking{-0.04em} leading{0.9}
+  ">hii</div>
 </body>
+
 </html>

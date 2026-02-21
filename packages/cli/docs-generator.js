@@ -11,7 +11,18 @@ export class DocsGenerator {
     this.animations = config.animations || {};
   }
 
-  generate() {
+  generate(outputDir = '.mizumi/docs') {
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true })
+    }
+    const html = this._buildHTML()
+    const outPath = path.join(outputDir, 'index.html')
+    fs.writeFileSync(outPath, html, 'utf8')
+    console.log(`✅ Docs: ${outPath}`)
+    return outPath
+  }
+
+  _buildHTML() {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>

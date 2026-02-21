@@ -68,9 +68,11 @@ class Mizumi {
       css.push('')
     }
 
-    css.push('/* ===== STATE VARIANTS ===== */')
-    css.push(this.variantGenerator.generateStateCSS(this.patternExpander))
-    css.push('')
+    if (rules.states !== false) {
+      css.push('/* ===== STATE VARIANTS ===== */')
+      css.push(this.variantGenerator.generateStateCSS(this.patternExpander))
+      css.push('')
+    }
 
     if (rules.darkMode) {
       css.push('/* ===== DARK MODE ===== */')

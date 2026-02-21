@@ -330,9 +330,10 @@ export default {
   rules: {
     responsive:  true,
     darkMode:    'class',
-    print:       false,
+    print:       true,
     motion:      true,
     orientation: false,
+    states: true,
 
     breakpoints: {
       sm:    '640px',
