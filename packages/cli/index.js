@@ -349,18 +349,29 @@ export default {
       console.log(`   CSS size: ${kb} KB`)
       console.log(`   Utilities generated: ${css.match(/\./g)?.length || 0}`)
 
-      // Unused token check
+      // Unused token check — only warn for tokens expected in patterns
+      // easing/duration/blur/zIndex/leading/tracking are utility tokens
+      // used inline in HTML, not required in patterns
+      const PATTERN_TOKEN_CATEGORIES = ['colors', 'spacing', 'typography', 'radius', 'shadows', 'fonts']
       console.log('\n🔍 TOKEN USAGE IN PATTERNS')
       const allPatternText = Object.values(patterns).join(' ')
+      let unusedCount = 0
       for (const [category, values] of Object.entries(tokens)) {
+        if (!PATTERN_TOKEN_CATEGORIES.includes(category)) continue
         if (typeof values !== 'object') continue
         for (const key of Object.keys(values)) {
           const used = allPatternText.includes(`:${key}`)
           if (!used) {
             console.log(`   ⚠️  ${category}.${key} — defined but not used in any pattern`)
+            unusedCount++
           }
         }
       }
+      if (unusedCount === 0) {
+        console.log('   ✅ All pattern tokens are in use')
+      }
+      console.log('\n   ℹ️  easing/duration/blur/opacity/zIndex/leading/tracking')
+      console.log('      are utility tokens — use inline in HTML/JSX as needed')
 
       console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
