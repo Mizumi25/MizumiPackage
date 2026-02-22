@@ -6,6 +6,7 @@ import { DocsGenerator } from './docs-generator.js'
 import { MizuParser, loadMizuFiles, mergeMizuConfigs } from '../core/mizu-parser.js'
 import { Validator }    from '../core/validator.js'
 import Mizumi           from '../core/index.js'
+import { generateDevToolsScript } from '../vite-plugin/devtools.js'
 
 import path             from 'node:path'
 import fs               from 'node:fs'
@@ -366,17 +367,24 @@ export default {
       fs.writeFileSync(path.join(outDir, 'mizumi-helpers.js'), helpers)
       console.log(`✅ Helpers: ${path.join(outDir, 'mizumi-helpers.js')} (${(Buffer.byteLength(helpers)/1024).toFixed(2)} KB)`)
 
-      const meta = JSON.stringify({
+      const metaObj = {
         tokens:    config.tokens,
         patterns:  config.patterns,
         animations:config.animations,
         rules:     config.rules,
         generated: new Date().toISOString()
-      }, null, 2)
+      }
+      const meta = JSON.stringify(metaObj, null, 2)
       fs.writeFileSync(path.join(outDir, 'mizumi.meta.json'), meta)
       console.log(`✅ Meta:    ${path.join(outDir, 'mizumi.meta.json')} (${(Buffer.byteLength(meta)/1024).toFixed(2)} KB)`)
 
+      // Always write devtools — inactive until mizumi-devtools.js is loaded
+      const devtools = generateDevToolsScript({ tokens: metaObj.tokens, patterns: metaObj.patterns, animations: metaObj.animations })
+      fs.writeFileSync(path.join(outDir, 'mizumi-devtools.js'), devtools)
+      console.log(`✅ DevTools:${path.join(outDir, 'mizumi-devtools.js')} (${(Buffer.byteLength(devtools)/1024).toFixed(2)} KB)`)
+
       console.log('\n✅ Build complete')
+      console.log('   💡 Add to HTML for DevTools: <script src=".mizumi/mizumi-devtools.js"></script>')
     } catch (err) {
       console.error('❌ Build failed:', err.message)
       process.exit(1)
@@ -387,7 +395,7 @@ export default {
   async watch() {
     console.log('🌊 Mizumi: Watching...\n')
     await commands.build()
-    watch(loadConfig, Mizumi)
+    watch(loadConfig, Mizumi, generateDevToolsScript)
   },
 
   // ── mizumi validate ──
@@ -942,4 +950,4 @@ else {
   console.error(`❌ Unknown command: ${command}`)
   console.log('Run: npx mizumi help')
   process.exit(1)
-} 
+}

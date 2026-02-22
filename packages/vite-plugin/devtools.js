@@ -480,7 +480,22 @@ export function generateDevToolsScript(meta) {
       return '<div class="mz-empty">No classes on this element</div>'
     }
 
+    // ── Conflict detection ──
+    const GSAP_TRANSFORM_ANIMS = ['hover-lift','hover-scale','hover-float','hover-sink','active-press','active-bounce']
+    const CSS_TRANSITION_CLASSES = mizumi.filter(c => c.startsWith('ease:') || c.startsWith('ease-speed:') || c.startsWith('ease-prop:'))
+    const GSAP_TRANSFORM_USED = mizumi.filter(c => GSAP_TRANSFORM_ANIMS.includes(c))
+    const hasConflict = CSS_TRANSITION_CLASSES.length > 0 && GSAP_TRANSFORM_USED.length > 0
+
     let html = ''
+
+    if (hasConflict) {
+      html += \`<div style="background:#2a1a0a;border:1px solid #c9a96e;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#c9a96e;line-height:1.5;">
+        ⚠️ <strong>Conflict detected</strong><br>
+        <span style="color:#8a8070;">\${GSAP_TRANSFORM_USED.join(', ')} uses GSAP tweens on transform.<br>
+        \${CSS_TRANSITION_CLASSES.join(', ')} adds a CSS transition on the same property.<br>
+        GSAP will win (inline styles), but remove the CSS transition for cleaner behaviour.</span>
+      </div>\`
+    }
 
     if (mizumi.length > 0) {
       html += '<div class="mz-section">'

@@ -1,0 +1,5 @@
+@pattern carding {
+  pad:md;
+  paint: #6E96AF;
+  curve:lg;
+}

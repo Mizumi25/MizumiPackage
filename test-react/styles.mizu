@@ -1,16 +1,10 @@
-@token {
-  colors {
-    brand: #ff6b6b;
-    ocean: #006994;
-  }
-  spacing {
-    hero: 120px;
-  }
+@token color {
+  primaaary: #ff4d4f;
 }
 
-@pattern hero-box {
-  pad: hero;
-  paint: brand;
-  ink: white;
-  curve: xl;
+
+@pattern cardinggg {
+  pad:md;
+  paint: primaaary;
+  curve:lg;
 }

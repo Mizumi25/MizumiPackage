@@ -686,12 +686,14 @@ export class AnimationEngine {
 
   function init() {
     if (typeof window.gsap === 'undefined') {
-      console.warn('🌊 Mizumi: GSAP not found. Animations will not run.')
-      console.warn('  React/Vite: npm install gsap then set window.gsap = gsap in main.jsx')
+      console.warn('\\n Mizumi: GSAP NOT FOUND - animations disabled.\\n animate-fade-in, hover-lift, scroll-trigger etc. will NOT run.\\n\\n CDN fix (add before </body>):\\n <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>\\n <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/ScrollTrigger.min.js"></script>\\n\\n npm/Vite fix: npm install gsap then in main.jsx: window.gsap = gsap\\n')
       return
     }
-    const gsap          = window.gsap
-    const ScrollTrigger = window.ScrollTrigger || null
+    var gsap          = window.gsap
+    var ScrollTrigger = window.ScrollTrigger || null
+    if (!ScrollTrigger) {
+      console.warn('Mizumi: ScrollTrigger not found - scroll-trigger animations disabled.')
+    }
     if (ScrollTrigger) gsap.registerPlugin(ScrollTrigger)
     run(gsap, ScrollTrigger)
   }

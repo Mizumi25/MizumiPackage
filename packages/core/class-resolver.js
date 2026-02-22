@@ -437,7 +437,7 @@ export const STATIC_UTILITIES = [
   { class: 'pos-right:0',          css: 'right: 0;' },
   { class: 'pos-btm:0',            css: 'bottom: 0;' },
   { class: 'pos-left:0',           css: 'left: 0;' },
-  { class: 'ease:default',         css: 'transition: all 0.3s ease;' },
+  { class: 'ease:default',         css: 'transition: all var(--duration-normal, 300ms) var(--ease-smooth, cubic-bezier(0.4,0,0.2,1));' },
 ]
 
 // Fast lookup map
@@ -445,12 +445,74 @@ const STATIC_MAP = Object.fromEntries(
   STATIC_UTILITIES.map(u => [u.class, u.css])
 )
 
+// All known capability prefixes — used for early-exit dispatch in resolveClass
+const KNOWN_PREFIXES = new Set([
+  'ink','ink-caret','ink-accent','ink-fill','ink-fill-fade',
+  'paint','paint-img','paint-size','paint-pos','paint-blend','paint-origin',
+  'canvas-w','canvas-h','canvas-w-min','canvas-h-min','canvas-w-max','canvas-h-max',
+  'canvas-ratio','canvas-fit-pos','canvas-fade','canvas-view',
+  'pad','pad-x','pad-y','pad-top','pad-right','pad-btm','pad-left',
+  'mar','mar-x','mar-y','mar-top','mar-right','mar-btm','mar-left',
+  'gap','gap-x','gap-y',
+  'stroke-color','stroke-width','stroke-top-color','stroke-btm-color',
+  'stroke-left-color','stroke-right-color','stroke-gap',
+  'stroke-top','stroke-btm','stroke-left','stroke-right',
+  'stroke-x','stroke-x-start','stroke-x-end','stroke-y','stroke-y-start','stroke-y-end',
+  'stroke-img',
+  'curve','curve-tl','curve-tr','curve-bl','curve-br','curve-start','curve-end',
+  'ring','ring-color','ring-width','ring-offset',
+  'cast','cast-text','cast-inner','cast-drop',
+  'glow-blur','glow-bright','glow-contrast','glow-gray','glow-hue','glow-invert','glow-sat','glow-sepia',
+  'glass','glass-blur','glass-bright','glass-sat','glass-contrast',
+  'clip','clip-mar','mask','mask-size','mask-pos',
+  'pos-top','pos-right','pos-btm','pos-left','pos-inset','pos-inset-x','pos-inset-y',
+  'layer',
+  'flex','flex-grow','flex-shrink','flex-base','flex-order',
+  'grid-cols','grid-rows','grid-area','grid-col','grid-row','grid-col-auto','grid-row-auto','grid-template',
+  'type-face','type-size','type-weight','type-style','type-stretch','type-kern','type-feature','type-variation','type-size-adjust',
+  'text','text-decor-color','text-decor-width','text-under-offset','text-emphasis-color','text-stroke','text-stroke-color',
+  'leading','tracking','word-gap','indent','tab',
+  'move','move-x','move-y','move-z','move-3d',
+  'spin','spin-x','spin-y','spin-z',
+  'scale','scale-x','scale-y',
+  'skew-x','skew-y','origin',
+  'depth-view','depth-origin',
+  'ease','ease-prop','ease-speed','ease-curve','ease-wait',
+  'play-name','play-speed','play-curve','play-loop','play-wait','play-state','play-fill','play-dir',
+  'scroll-pad','scroll-mar','scroll-timeline','scroll-pad-x','scroll-pad-y',
+  'frame-name','frame-size','frame-size-w','frame-size-h',
+  'scene-name','scene-class',
+  'bar-color',
+  'path','path-dist','path-spin','path-anchor','path-pos',
+  'shape-mar','shape-img','shape',
+  'svg-stroke','svg-stroke-width','svg-stroke-dash','svg-stroke-offset','svg-stroke-fade',
+  'anchor-name','anchor-scope',
+  'ruby-align','ruby-pos',
+  'img-orient',
+  'cols','col-count','col-width','col-gap','col-rule','col-span',
+  'counter-reset','counter-inc',
+  'will','content','field-size','cursor-shape','highlight','orphans','widows','quotes',
+])
+
 // ============================================================
 // TOKEN-BASED CLASS RESOLVER
 // Handles: capability:token pairs from your token config
 // All 481 Mizumi vocabulary properties
 // ============================================================
 export function resolveClass(className, tokens = {}) {
+
+  // ── Fast prefix dispatch ──
+  // Instead of running 200+ regexes sequentially on every class,
+  // extract the capability prefix and only enter the relevant block.
+  // Falls through to full scan only for unknown prefixes.
+  const colonIdx = className.indexOf(':')
+  if (colonIdx !== -1) {
+    const prefix = className.slice(0, colonIdx)
+    // If prefix is not in our known set, skip to static map immediately
+    if (!KNOWN_PREFIXES.has(prefix)) {
+      return STATIC_MAP[className] || null
+    }
+  }
 
   // ── INK (color) ──
   const ink = className.match(/^ink:(.+)$/)
@@ -877,41 +939,44 @@ export function resolveClass(className, tokens = {}) {
   if (textStrokeColor) return `-webkit-text-stroke-color: ${resolveValue(textStrokeColor[1],'color')};`
 
   // ── MOVE (transforms) ──
+  // Uses CSS individual transform properties (translate, rotate, scale)
+  // so multiple transform utilities can stack on the same element
+  // without clobbering each other. Supported in all modern browsers.
   const moveX = className.match(/^move-x:(.+)$/)
-  if (moveX) return `transform: translateX(${moveX[1]});`
+  if (moveX) return `translate: ${moveX[1]} 0;`
 
   const moveY = className.match(/^move-y:(.+)$/)
-  if (moveY) return `transform: translateY(${moveY[1]});`
+  if (moveY) return `translate: 0 ${moveY[1]};`
 
   const moveZ = className.match(/^move-z:(.+)$/)
-  if (moveZ) return `transform: translateZ(${moveZ[1]});`
+  if (moveZ) return `translate: 0 0 ${moveZ[1]};`
 
   const move3d = className.match(/^move-3d:(.+)$/)
-  if (move3d) return `transform: translate3d(${move3d[1].replace(/_/g,',')});`
+  if (move3d) { const p = move3d[1].split('_'); return `translate: ${p[0]||'0'} ${p[1]||'0'} ${p[2]||'0'};` }
 
   const move = className.match(/^move:(.+)$/)
-  if (move) return `transform: translate(${move[1].replace(/_/g,',')});`
+  if (move) { const p = move[1].split('_'); return `translate: ${p[0]||'0'} ${p[1]||'0'};` }
 
   const spinX = className.match(/^spin-x:(.+)$/)
-  if (spinX) return `transform: rotateX(${spinX[1]});`
+  if (spinX) return `rotate: x ${spinX[1]};`
 
   const spinY = className.match(/^spin-y:(.+)$/)
-  if (spinY) return `transform: rotateY(${spinY[1]});`
+  if (spinY) return `rotate: y ${spinY[1]};`
 
   const spinZ = className.match(/^spin-z:(.+)$/)
-  if (spinZ) return `transform: rotateZ(${spinZ[1]});`
+  if (spinZ) return `rotate: z ${spinZ[1]};`
 
   const spin = className.match(/^spin:(.+)$/)
-  if (spin) return `transform: rotate(${spin[1]});`
+  if (spin) return `rotate: ${spin[1]};`
 
   const scaleX = className.match(/^scale-x:(.+)$/)
-  if (scaleX) return `transform: scaleX(${scaleX[1]});`
+  if (scaleX) return `scale: ${scaleX[1]} 1;`
 
   const scaleY = className.match(/^scale-y:(.+)$/)
-  if (scaleY) return `transform: scaleY(${scaleY[1]});`
+  if (scaleY) return `scale: 1 ${scaleY[1]};`
 
   const scale = className.match(/^scale:(.+)$/)
-  if (scale) return `transform: scale(${scale[1]});`
+  if (scale) return `scale: ${scale[1]};`
 
   const skewX = className.match(/^skew-x:(.+)$/)
   if (skewX) return `transform: skewX(${skewX[1]});`
@@ -942,7 +1007,7 @@ export function resolveClass(className, tokens = {}) {
   if (easeWait) return `transition-delay: ${resolveValue(easeWait[1],'duration')};`
 
   const ease = className.match(/^ease:(.+)$/)
-  if (ease) return `transition: all ${resolveValue(ease[1],'duration')} ease;`
+  if (ease) return `transition: all ${resolveValue(ease[1],'duration')} var(--ease-smooth, cubic-bezier(0.4,0,0.2,1));`
 
   // ── PLAY (CSS animation) ──
   const playName = className.match(/^play-name:(.+)$/)
@@ -1307,11 +1372,21 @@ export function generateTokenUtilities(tokens = {}) {
     }
   }
 
+  // ── Strokes → stroke-width, ring-width ──
+  if (tokens.strokes) {
+    for (const [key] of Object.entries(tokens.strokes)) {
+      utilities.push({ class: `stroke-width:${key}`, css: `border-width: var(--stroke-${key});` })
+      utilities.push({ class: `ring-width:${key}`,   css: `outline-width: var(--stroke-${key});` })
+    }
+  }
+
   // ── Blur → glass-blur, glow-blur ──
+  // Uses CSS vars so user token overrides are respected at runtime
   if (tokens.blur) {
-    for (const [key, value] of Object.entries(tokens.blur)) {
-      utilities.push({ class: `glass-blur:${key}`, css: `backdrop-filter: blur(${value});` })
-      utilities.push({ class: `glow-blur:${key}`,  css: `filter: blur(${value});` })
+    for (const [key] of Object.entries(tokens.blur)) {
+      utilities.push({ class: `glass-blur:${key}`, css: `backdrop-filter: blur(var(--blur-${key}));` })
+      utilities.push({ class: `glow-blur:${key}`,  css: `filter: blur(var(--blur-${key}));` })
+      utilities.push({ class: `glass:${key}`,      css: `backdrop-filter: blur(var(--blur-${key}));` })
     }
   }
 

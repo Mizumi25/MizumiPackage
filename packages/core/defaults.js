@@ -120,6 +120,14 @@ export const DEFAULT_TOKENS = {
     wider:  '0.1em',
     widest: '0.2em',
   },
+
+  strokes: {
+    none:  '0',
+    thin:  '1px',
+    base:  '2px',
+    thick: '4px',
+    heavy: '8px',
+  },
 }
 
 export const DEFAULT_PATTERNS = {
@@ -145,16 +153,16 @@ export const DEFAULT_PATTERNS = {
   'card':             'paint:surface pad:md curve:lg cast:md',
   'card-elevated':    'card cast:xl',
   'card-flat':        'card cast:none',
-  'card-hover':       'card ease:default cursor:pointer',
+  'card-hover':       'card ease:normal ease-curve:smooth cursor:pointer',
   'card-glass':       'glass-blur:glass paint:surface curve:lg cast:md canvas-fade:soft',
-  'card-outline':     'pad:md curve:lg stroke-style:solid stroke-width:1px stroke-color:neutral-200',
+  'card-outline':     'pad:md curve:lg stroke-style:solid stroke-width:thin stroke-color:neutral-200',
 
   // ── BUTTONS ─────────────────────────────────────────────────
   'button': [
     'pad-y:sm pad-x:lg',
     'curve:md',
     'cursor:pointer',
-    'ease:default',
+    'ease:normal ease-curve:smooth',
     'display:flex-inline',
     'align-yi:center',
     'align-x:center',
@@ -162,7 +170,7 @@ export const DEFAULT_PATTERNS = {
   ].join(' '),
   'btn-primary':   'button paint:primary ink:white',
   'btn-secondary': 'button paint:secondary ink:white',
-  'btn-ghost':     'button stroke-style:solid stroke-width:1px stroke-color:primary ink:primary',
+  'btn-ghost':     'button stroke-style:solid stroke-width:thin stroke-color:primary ink:primary',
   'btn-danger':    'button paint:error ink:white',
   'btn-success':   'button paint:success ink:white',
   'btn-text':      'button ink:primary',
@@ -174,9 +182,9 @@ export const DEFAULT_PATTERNS = {
     'pad:sm',
     'curve:md',
     'stroke-color:neutral-200',
-    'stroke-width:1px',
+    'stroke-width:thin',
     'stroke-style:solid',
-    'ease:default',
+    'ease:normal ease-curve:smooth',
     'canvas-w:full',
     'type-face:sans',
     'text:body',
@@ -190,7 +198,7 @@ export const DEFAULT_PATTERNS = {
   'subheading':   'text:h3 ink:neutral-500 type-face:sans',
   'text-muted':   'ink:neutral-500 text:small',
   'text-label':   'text:small type-weight:semi tracking:wide text-case:upper ink:neutral-500',
-  'text-link':    'ink:primary ease:default',
+  'text-link':    'ink:primary ease:normal ease-curve:smooth',
   'text-mono':    'type-face:mono text:small',
   'prose':        'text:body ink:ink leading:relaxed type-face:sans',
   'caption':      'text:xs ink:neutral-500 type-face:sans',
@@ -211,8 +219,8 @@ export const DEFAULT_PATTERNS = {
   'badge-warning':  'badge paint:warning ink:white',
 
   // ── DIVIDER ─────────────────────────────────────────────────
-  'divider':        'stroke-y-start:neutral-200 stroke-style:solid stroke-width:1px',
-  'divider-strong': 'stroke-y-start:neutral-400 stroke-style:solid stroke-width:1px',
+  'divider':        'stroke-y-start:neutral-200 stroke-style:solid stroke-width:thin',
+  'divider-strong': 'stroke-y-start:neutral-400 stroke-style:solid stroke-width:thin',
 
   // ── AVATAR ──────────────────────────────────────────────────
   'avatar':         'canvas-w:lg canvas-h:lg curve:full overflow:hidden canvas-fit:cover',
