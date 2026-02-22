@@ -452,6 +452,9 @@ export function generateDevToolsScript(meta) {
       border-radius: 50%;
       border: 2px solid #000;
       background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 9px;
       font-family: ui-monospace, monospace;
       color: #000;
@@ -465,11 +468,7 @@ export function generateDevToolsScript(meta) {
       display: none;
     }
     #mz-sun:active { cursor: grabbing; }
-    #mz-sun.visible {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    #mz-sun.visible { display: flex; }
 
     #mz-perspective-panel {
       position: fixed;
@@ -1190,6 +1189,19 @@ export function generateDevToolsScript(meta) {
     let sunDragging = false
     let sunOffX     = 0
     let sunOffY     = 0
+    
+    sunBtn.addEventListener('click', () => {
+      sunActive = !sunActive
+      sunBtn.classList.toggle('active', sunActive)
+      if (sunActive) {
+        // Place sun at center of viewport initially
+        sun.style.left = (window.innerWidth / 2 - 30) + 'px'
+        sun.style.top  = (window.innerHeight / 2 - 30) + 'px'
+        sun.classList.add('visible')
+      } else {
+        sun.classList.remove('visible')
+      }
+    })
 
     sun.addEventListener('mousedown', function(e) {
       sunDragging = true
