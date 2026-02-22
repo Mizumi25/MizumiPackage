@@ -36,9 +36,7 @@ export class DepthEngine {
     const zMap   = this.config.zMap
     const keys   = Object.keys(zMap).map(Number).sort((a, b) => a - b)
     const layers = this.config.layers - 1
-
     if (zMap[z] !== undefined) return zMap[z] / layers
-
     let lo = keys[0], hi = keys[keys.length - 1]
     for (let i = 0; i < keys.length - 1; i++) {
       if (z >= keys[i] && z <= keys[i + 1]) { lo = keys[i]; hi = keys[i + 1]; break }
@@ -77,10 +75,10 @@ export class DepthEngine {
     lines.push('/* ===== MIZUMI DEPTH — Static CSS Layer ===== */')
     lines.push('')
     lines.push(':root {')
-    lines.push(`  --mz-perspective: ${this.config.perspective}px;`)
-    lines.push(`  --mz-light-x: ${this.config.light.x};`)
-    lines.push(`  --mz-light-y: ${this.config.light.y};`)
-    lines.push(`  --mz-strength: ${this.config.strength};`)
+    lines.push('  --mz-perspective: ' + this.config.perspective + 'px;')
+    lines.push('  --mz-light-x: ' + this.config.light.x + ';')
+    lines.push('  --mz-light-y: ' + this.config.light.y + ';')
+    lines.push('  --mz-strength: ' + this.config.strength + ';')
     lines.push('}')
     lines.push('')
 
@@ -89,21 +87,21 @@ export class DepthEngine {
     tiers.forEach(([name, z], i) => {
       const depth     = i / (tiers.length - 1 || 1)
       const vars      = this.getDepthVars(depth)
-      const shadowStr = `${vars.shadowX.toFixed(1)}px ${vars.shadowY.toFixed(1)}px ${vars.shadowBlur.toFixed(1)}px ${vars.shadowSpread.toFixed(1)}px rgba(0,0,0,${vars.shadowAlpha.toFixed(3)})`
-      const filterStr = `brightness(${vars.brightness.toFixed(3)}) saturate(${vars.saturate.toFixed(3)})`
+      const shadowStr = vars.shadowX.toFixed(1) + 'px ' + vars.shadowY.toFixed(1) + 'px ' + vars.shadowBlur.toFixed(1) + 'px ' + vars.shadowSpread.toFixed(1) + 'px rgba(0,0,0,' + vars.shadowAlpha.toFixed(3) + ')'
+      const filterStr = 'brightness(' + vars.brightness.toFixed(3) + ') saturate(' + vars.saturate.toFixed(3) + ')'
 
-      lines.push(`/* depth tier: ${name} (z=${z}) */`)
-      lines.push(`.layer\\:${name} {`)
-      lines.push(`  --mz-depth-shadow:   ${shadowStr};`)
-      lines.push(`  --mz-depth-filter:   ${filterStr};`)
-      lines.push(`  --mz-depth-scale:    ${vars.scale.toFixed(4)};`)
+      lines.push('/* depth tier: ' + name + ' (z=' + z + ') */')
+      lines.push('.layer\\:' + name + ' {')
+      lines.push('  --mz-depth-shadow:   ' + shadowStr + ';')
+      lines.push('  --mz-depth-filter:   ' + filterStr + ';')
+      lines.push('  --mz-depth-scale:    ' + vars.scale.toFixed(4) + ';')
       if (vars.backdropBlur > 0.01) {
-        lines.push(`  --mz-depth-backdrop: blur(${vars.backdropBlur.toFixed(2)}px);`)
+        lines.push('  --mz-depth-backdrop: blur(' + vars.backdropBlur.toFixed(2) + 'px);')
       }
-      lines.push(`  box-shadow:     var(--mz-depth-shadow);`)
-      lines.push(`  filter:         var(--mz-depth-filter);`)
-      lines.push(`  transform:      scale(var(--mz-depth-scale, 1));`)
-      lines.push(`  transition:     box-shadow 0.3s ease, filter 0.3s ease, transform 0.3s ease;`)
+      lines.push('  box-shadow:  var(--mz-depth-shadow);')
+      lines.push('  filter:      var(--mz-depth-filter);')
+      lines.push('  transform:   scale(var(--mz-depth-scale, 1));')
+      lines.push('  transition:  box-shadow 0.3s ease, filter 0.3s ease, transform 0.3s ease;')
       lines.push('}')
       lines.push('')
     })
@@ -161,19 +159,28 @@ export class DepthEngine {
     const saturate     = 1 - (1 - depth) * 0.12 * s
     const backdropBlur = depth < 0.15 ? (0.15 - depth) * 3 * s : 0
 
-    const hasExplicitShadow = Array.from(el.classList).some(c => c.startsWith('cast:'))
-    if (fx.shadow && !hasExplicitShadow && shadowAlpha > 0.01) {
-      const shadow = \`\${shadowX.toFixed(1)}px \${shadowY.toFixed(1)}px \${shadowBlur.toFixed(1)}px \${shadowSpread.toFixed(1)}px rgba(0,0,0,\${shadowAlpha.toFixed(3)})\`
-      el.style.setProperty('--mz-depth-shadow', shadow)
+    if (fx.shadow && shadowAlpha > 0.005) {
+      const depthShadow = shadowX.toFixed(1) + 'px ' + shadowY.toFixed(1) + 'px ' + shadowBlur.toFixed(1) + 'px ' + shadowSpread.toFixed(1) + 'px rgba(0,0,0,' + shadowAlpha.toFixed(3) + ')'
+      const existing    = el.style.boxShadow
+      if (existing && existing !== 'none' && existing !== '') {
+        el.style.setProperty('--mz-depth-shadow', existing + ', ' + depthShadow)
+      } else {
+        el.style.setProperty('--mz-depth-shadow', depthShadow)
+      }
     }
 
+    const lightFacing = Math.max(0, (-lx * 0.5 + -ly * 0.5))
+    const lightBoost  = lightFacing * depth * li * 0.06 * s
+    const finalBright = brightness + lightBoost
+    const finalSat    = saturate + lightFacing * depth * 0.08 * s
+
     const filters = []
-    if (fx.brightness && Math.abs(brightness - 1) > 0.001) filters.push(\`brightness(\${brightness.toFixed(3)})\`)
-    if (fx.saturate   && Math.abs(saturate - 1)   > 0.001) filters.push(\`saturate(\${saturate.toFixed(3)})\`)
+    if (fx.brightness && Math.abs(finalBright - 1) > 0.001) filters.push('brightness(' + finalBright.toFixed(3) + ')')
+    if (fx.saturate   && Math.abs(finalSat - 1)    > 0.001) filters.push('saturate(' + finalSat.toFixed(3) + ')')
     if (filters.length) el.style.setProperty('--mz-depth-filter', filters.join(' '))
 
     if (fx.scale && Math.abs(scale - 1) > 0.0001) el.style.setProperty('--mz-depth-scale', scale.toFixed(4))
-    if (fx.blur  && backdropBlur > 0.01)           el.style.setProperty('--mz-depth-backdrop', \`blur(\${backdropBlur.toFixed(2)}px)\`)
+    if (fx.blur  && backdropBlur > 0.01)           el.style.setProperty('--mz-depth-backdrop', 'blur(' + backdropBlur.toFixed(2) + 'px)')
 
     el.setAttribute('data-mz-depth', depth.toFixed(2))
   }
@@ -193,49 +200,55 @@ export class DepthEngine {
           filter      0.3s cubic-bezier(0.4,0,0.2,1),
           transform   0.3s cubic-bezier(0.4,0,0.2,1);
       }
-      .depth-flat   { box-shadow: none !important; filter: none !important; transform: none !important; }
-      .depth-boost  { filter: brightness(1.05) saturate(1.1) !important; }
+      .depth-flat  { box-shadow: none !important; filter: none !important; transform: none !important; }
+      .depth-boost { filter: brightness(1.05) saturate(1.1) !important; }
     \`
     document.head.appendChild(style)
   }
 
   function scanDOM() {
-    const tokenToZ = { base: 0, float: 10, sticky: 20, modal: 100, toast: 200, top: 999 }
+    const tokenToZ  = { base: 0, float: 10, sticky: 20, modal: 100, toast: 200, top: 999 }
     const processed = new WeakSet()
 
-    document.querySelectorAll('[class]').forEach(el => {
-      if (el.classList.contains('depth-ignore')) return
-      if (processed.has(el)) return
+    document.querySelectorAll('[class]').forEach(function(el) {
+      if (el === document.body)                   return
+      if (el === document.documentElement)        return
+      if (el.classList.contains('depth-ignore'))  return
+      if (el.closest('#mz-panel'))                return
+      if (processed.has(el))                      return
+      processed.add(el)
 
-      const layerClass = Array.from(el.classList).find(c => c.startsWith('layer:'))
-      if (layerClass) {
-        const token = layerClass.split(':')[1]
-        const z     = tokenToZ[token] ?? parseInt(token) ?? 0
-        processed.add(el)
-        applyDepth(el, getDepth(z))
-        return
+      var layerClass = null
+      var classes    = el.classList
+      for (var i = 0; i < classes.length; i++) {
+        if (classes[i].startsWith('layer:')) { layerClass = classes[i]; break }
       }
 
-      const z = window.getComputedStyle(el).zIndex
-      if (z && z !== 'auto' && z !== '0') {
-        processed.add(el)
+      if (layerClass) {
+        var token = layerClass.split(':')[1]
+        var z     = tokenToZ[token] !== undefined ? tokenToZ[token] : (parseInt(token) || 0)
         applyDepth(el, getDepth(z))
       }
     })
   }
 
   function observeDOM() {
-    const tokenToZ = { base: 0, float: 10, sticky: 20, modal: 100, toast: 200, top: 999 }
-    new MutationObserver(mutations => {
-      for (const m of mutations) {
-        for (const node of m.addedNodes) {
+    var tokenToZ = { base: 0, float: 10, sticky: 20, modal: 100, toast: 200, top: 999 }
+    new MutationObserver(function(mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var added = mutations[i].addedNodes
+        for (var j = 0; j < added.length; j++) {
+          var node = added[j]
           if (node.nodeType !== 1) continue
-          if (node.classList?.contains('depth-ignore')) continue
-          const layerClass = Array.from(node.classList || []).find(c => c.startsWith('layer:'))
-          if (layerClass) {
-            const token = layerClass.split(':')[1]
-            const z     = tokenToZ[token] ?? parseInt(token) ?? 0
-            applyDepth(node, getDepth(z))
+          if (!node.classList || node.classList.contains('depth-ignore')) continue
+          var classes = node.classList
+          for (var k = 0; k < classes.length; k++) {
+            if (classes[k].startsWith('layer:')) {
+              var token = classes[k].split(':')[1]
+              var z     = tokenToZ[token] !== undefined ? tokenToZ[token] : (parseInt(token) || 0)
+              applyDepth(node, getDepth(z))
+              break
+            }
           }
         }
       }
@@ -244,20 +257,21 @@ export class DepthEngine {
 
   window.MizumiDepth = {
     version: '0.1.0',
-    set(el, depth)   { applyDepth(el, Math.max(0, Math.min(1, depth))) },
-    refresh()        { scanDOM() },
-    setLight(x, y)   { CFG.light.x = x; CFG.light.y = y; scanDOM() },
-    setStrength(s)   { CFG.strength = Math.max(0, Math.min(1, s)); scanDOM() },
-    getDepth(el)     { return parseFloat(el.getAttribute('data-mz-depth') ?? '0') },
-    disable() {
-      document.querySelectorAll('[data-mz-depth]').forEach(el => {
+    set: function(el, depth)  { applyDepth(el, Math.max(0, Math.min(1, depth))) },
+    refresh: function()       { scanDOM() },
+    setLight: function(x, y)  { CFG.light.x = x; CFG.light.y = y; scanDOM() },
+    setStrength: function(s)  { CFG.strength = Math.max(0, Math.min(1, s)); scanDOM() },
+    getDepth: function(el)    { return parseFloat(el.getAttribute('data-mz-depth') || '0') },
+    disable: function() {
+      document.querySelectorAll('[data-mz-depth]').forEach(function(el) {
         el.style.removeProperty('--mz-depth-shadow')
         el.style.removeProperty('--mz-depth-filter')
         el.style.removeProperty('--mz-depth-scale')
         el.style.removeProperty('--mz-depth-backdrop')
         el.removeAttribute('data-mz-depth')
       })
-      document.getElementById('mizumi-depth-styles')?.remove()
+      var s = document.getElementById('mizumi-depth-styles')
+      if (s) s.remove()
       window.__MIZUMI_DEPTH__ = false
     }
   }
@@ -267,8 +281,12 @@ export class DepthEngine {
     document.documentElement.style.setProperty('--mz-perspective', CFG.perspective + 'px')
     document.body.style.perspective       = 'var(--mz-perspective)'
     document.body.style.perspectiveOrigin = '50% 30%'
-    scanDOM()
-    observeDOM()
+    var scan = function() { scanDOM(); observeDOM() }
+    if (window.requestIdleCallback) {
+      requestIdleCallback(scan, { timeout: 500 })
+    } else {
+      setTimeout(scan, 100)
+    }
     console.log('🌊 Mizumi Depth ready')
   }
 
