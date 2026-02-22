@@ -401,3 +401,30 @@ export const DEFAULT_RULES = {
     sidebar: { collapsed: '200px', expanded: '320px' },
   },
 }
+
+export const DEFAULT_DEPTH = {
+  layers:      6,
+  perspective: 1200,
+  light: {
+    x:         -1,
+    y:         -1,
+    intensity: 0.6,
+    ambient:   0.4,
+  },
+  effects: {
+    shadow:     true,
+    scale:      true,
+    brightness: true,
+    blur:       true,
+    saturate:   true,
+  },
+  strength: 0.5,
+  zMap: {
+    0:   0,
+    10:  1,
+    20:  2,
+    100: 3,
+    200: 4,
+    999: 5,
+  },
+}

@@ -11,6 +11,7 @@ window.gsap = gsap
 window.ScrollTrigger = ScrollTrigger
 
 import('../.mizumi/mizumi-runtime.js')
+import('../.mizumi/mizumi-depth-runtime.js')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

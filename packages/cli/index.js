@@ -358,6 +358,10 @@ export default {
       const js = mizumi.generateRuntimeScript()
       fs.writeFileSync(path.join(outDir, 'mizumi-runtime.js'), js)
       console.log(`✅ Runtime: ${path.join(outDir, 'mizumi-runtime.js')} (${(Buffer.byteLength(js)/1024).toFixed(2)} KB)`)
+      
+      const depthJs = mizumi.depthEngine.generateRuntimeScript()
+      fs.writeFileSync(path.join(outDir, 'mizumi-depth-runtime.js'), depthJs)
+      console.log(`✅ Depth:   ${path.join(outDir, 'mizumi-depth-runtime.js')} (${(Buffer.byteLength(depthJs)/1024).toFixed(2)} KB)`)
 
       const dts = mizumi.typesGenerator.generateDTS()
       fs.writeFileSync(path.join(outDir, 'mizumi.d.ts'), dts)

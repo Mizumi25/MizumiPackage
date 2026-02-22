@@ -7,6 +7,7 @@ import { VariantGenerator } from './variant-generator.js'
 import { TypesGenerator }   from './types-generator.js'
 import { Validator }        from './validator.js'
 import { AnimationEngine }  from '../gsap/index.js'
+import { DepthEngine } from '../depth/index.js'
 
 import fs   from 'node:fs'
 import path from 'node:path'
@@ -38,6 +39,7 @@ class Mizumi {
       this.config.animations,
       this.config.tokens
     )
+    this.depthEngine = new DepthEngine(this.config.depth || {})
   }
 
   generateCSS() {
@@ -103,6 +105,10 @@ class Mizumi {
       css.push(this.variantGenerator.generateOrientationCSS())
       css.push('')
     }
+    
+    css.push('/* ===== DEPTH LAYER ===== */')
+    css.push(this.depthEngine.generateDepthCSS(this.config.tokens))
+    css.push('')
 
     return css.join('\n')
   }
@@ -144,7 +150,12 @@ class Mizumi {
     const js     = this.generateRuntimeScript()
     fs.writeFileSync(jsPath, js)
     console.log(`✅ Runtime: ${jsPath} (${kb(js)} KB)`)
-
+    
+    const depthPath = path.join(outputDir, 'mizumi-depth-runtime.js')
+    const depthJs   = this.depthEngine.generateRuntimeScript()
+    fs.writeFileSync(depthPath, depthJs)
+    console.log(`✅ Depth:   ${depthPath} (${kb(depthJs)} KB)`)
+    
     const dtsPath = path.join(outputDir, 'mizumi.d.ts')
     const dts     = this.typesGenerator.generateDTS()
     fs.writeFileSync(dtsPath, dts)

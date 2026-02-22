@@ -348,4 +348,10 @@ export default {
       sidebar: { collapsed: '200px', expanded: '320px' },
     },
   },
+  
+  depth: {
+    strength: 0.4,           
+    perspective: 1000,       
+    light: { x: -1, y: -1 } 
+  },
 }

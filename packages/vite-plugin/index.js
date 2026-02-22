@@ -107,6 +107,7 @@ async function buildMizumi(configPath, outputDir, root) {
 
     fs.writeFileSync(path.join(outputDir, 'mizumi.css'),        css)
     fs.writeFileSync(path.join(outputDir, 'mizumi-runtime.js'), mz.generateRuntimeScript())
+    fs.writeFileSync(path.join(outputDir, 'mizumi-depth-runtime.js'), mz.depthEngine.generateRuntimeScript())
     fs.writeFileSync(path.join(outputDir, 'mizumi.d.ts'),       mz.typesGenerator.generateDTS())
     fs.writeFileSync(path.join(outputDir, 'mizumi-helpers.js'), mz.typesGenerator.generateHelpers())
 
