@@ -130,9 +130,11 @@ function mizumiPlugin(options = {}) {
   const configFile = options.config || 'mizumi.config.js'
   const outputDir  = options.output || '.mizumi'
 
-  let root       = process.cwd()
+  let root         = process.cwd()
   let configPath
-  let isDev      = false
+  let isDev        = false
+  let isBuilding   = false
+  let rebuildTimer = null
 
   return {
     name: 'vite-plugin-mizumi',
@@ -158,18 +160,89 @@ function mizumiPlugin(options = {}) {
 
     configureServer(server) {
       if (!configPath || !fs.existsSync(configPath)) return
+
+      const absOutputDir = path.resolve(root, outputDir)
+
+      // ── /__mizumi_write endpoint ──────────────────────────────────
+      server.middlewares.use('/__mizumi_write', async (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end(); return }
+        let body = ''
+        req.on('data', chunk => { body += chunk })
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const { file, line, newClasses } = JSON.parse(body)
+            if (!file || !newClasses) {
+              res.end(JSON.stringify({ ok: false, reason: 'missing file or newClasses' }))
+              return
+            }
+            const absFile = path.resolve(root, file.replace(/^\//, ''))
+            if (!absFile.startsWith(root + path.sep) && absFile !== root) {
+              res.end(JSON.stringify({ ok: false, reason: 'outside project root' }))
+              return
+            }
+            if (!fs.existsSync(absFile)) {
+              res.end(JSON.stringify({ ok: false, reason: 'file not found' }))
+              return
+            }
+            const src   = fs.readFileSync(absFile, 'utf8')
+            const lines = src.split('\n')
+            const targetLine = lines[line - 1]
+            if (targetLine === undefined) {
+              res.end(JSON.stringify({ ok: false, reason: `line ${line} not found` }))
+              return
+            }
+            const updated = targetLine
+              .replace(/(className|class)\s*=\s*"([^"]*)"/, (_, attr) => `${attr}="${newClasses}"`)
+              .replace(/(className|class)\s*=\s*'([^']*)'/, (_, attr) => `${attr}='${newClasses}'`)
+              .replace(/(className|class)\s*=\s*\{`([^`]*)`\}/, (_, attr) => `${attr}={\`${newClasses}\`}`)
+            if (updated === targetLine) {
+              res.end(JSON.stringify({ ok: false, reason: 'no className/class found on that line' }))
+              return
+            }
+            lines[line - 1] = updated
+            fs.writeFileSync(absFile, lines.join('\n'))
+            console.log(`🌊 Mizumi DevTools: wrote → ${path.relative(root, absFile)}:${line}`)
+            res.end(JSON.stringify({ ok: true }))
+          } catch (err) {
+            res.end(JSON.stringify({ ok: false, reason: err.message }))
+          }
+        })
+      })
+
       server.watcher.add(configPath)
       server.watcher.add(path.join(root, '**/*.mizu'))
+
       const rebuild = async () => {
-        console.log('🌊 Mizumi: rebuilding...')
-        await buildMizumi(configPath, path.resolve(root, outputDir), root)
-        server.ws.send({ type: 'full-reload', path: '*' })
+        if (isBuilding) return
+        isBuilding = true
+        try {
+          console.log('🌊 Mizumi: rebuilding...')
+          await buildMizumi(configPath, absOutputDir, root)
+          server.ws.send({ type: 'full-reload', path: '*' })
+        } finally {
+          isBuilding = false
+        }
       }
-      server.watcher.on('change', async (file) => {
-        if (file === configPath || /\.(jsx?|tsx?|html|vue|svelte|mizu)$/.test(file)) await rebuild()
+
+      const debouncedRebuild = () => {
+        clearTimeout(rebuildTimer)
+        rebuildTimer = setTimeout(rebuild, 120)
+      }
+
+      server.watcher.on('change', (file) => {
+        // KEY FIX: ignore .mizumi output dir entirely
+        if (file.startsWith(absOutputDir + path.sep) || file.startsWith(absOutputDir + '/')) return
+        if (file === configPath || /\.(mizu)$/.test(file)) {
+          debouncedRebuild()
+        } else if (/\.(jsx?|tsx?|html|vue|svelte)$/.test(file)) {
+          debouncedRebuild()
+        }
       })
-      server.watcher.on('add', async (file) => {
-        if (/\.(jsx?|tsx?|html|vue|svelte)$/.test(file)) await rebuild()
+
+      server.watcher.on('add', (file) => {
+        if (file.startsWith(absOutputDir + path.sep) || file.startsWith(absOutputDir + '/')) return
+        if (/\.(jsx?|tsx?|html|vue|svelte)$/.test(file)) debouncedRebuild()
       })
     },
 

@@ -27,6 +27,48 @@ export function generateDevToolsScript(meta) {
   let panelY     = null
   let enabled    = true
   let tab        = 'classes'
+  
+  
+  // ── WRITE-BACK: get React fiber source location ───────────
+  function getSourceLocation(el) {
+    if (el.dataset && el.dataset.source) {
+      const parts = el.dataset.source.split(':')
+      return { file: parts[0], line: parseInt(parts[1]) || 1 }
+    }
+    const fiberKey = Object.keys(el).find(k =>
+      k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance')
+    )
+    if (fiberKey) {
+      let fiber = el[fiberKey]
+      while (fiber) {
+        const src = fiber._debugSource || fiber.memoizedProps?.__source
+        if (src && src.fileName) {
+          return { file: src.fileName, line: src.lineNumber }
+        }
+        fiber = fiber.return
+      }
+    }
+    return null
+  }
+
+  function writeClassesToSource(el, newClasses) {
+    const loc = getSourceLocation(el)
+    if (!loc) {
+      showToast('⚠ no source location — DOM only')
+      return
+    }
+    fetch('/__mizumi_write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: loc.file, line: loc.line, newClasses })
+    })
+      .then(r => r.json())
+      .then(result => {
+        if (result.ok) showToast('✓ saved to source')
+        else showToast('⚠ ' + (result.reason || 'write failed'))
+      })
+      .catch(() => showToast('⚠ write failed'))
+  }
 
   // ── STYLES ────────────────────────────────────────────────
   const style = document.createElement('style')
@@ -667,6 +709,7 @@ export function generateDevToolsScript(meta) {
         e.stopPropagation()
         const cls = btn.dataset.remove
         target.classList.remove(cls)
+        writeClassesToSource(target, Array.from(target.classList).join(' '))
         renderPanel()
         showToast(\`Removed: \${cls}\`)
       })
@@ -688,6 +731,7 @@ export function generateDevToolsScript(meta) {
       patSel.addEventListener('change', () => {
         if (!patSel.value) return
         target.classList.add(patSel.value)
+        writeClassesToSource(target, Array.from(target.classList).join(' '))
         showToast(\`Added: \${patSel.value}\`)
         tab = 'classes'
         renderPanel()
@@ -701,6 +745,7 @@ export function generateDevToolsScript(meta) {
       animSel.addEventListener('change', () => {
         if (!animSel.value) return
         target.classList.add(animSel.value)
+        writeClassesToSource(target, Array.from(target.classList).join(' '))
         showToast(\`Added: \${animSel.value}\`)
         tab = 'classes'
         renderPanel()
@@ -719,6 +764,7 @@ export function generateDevToolsScript(meta) {
           if (c.startsWith(prefix)) target.classList.remove(c)
         })
         target.classList.add(cls)
+        writeClassesToSource(target, Array.from(target.classList).join(' '))
         showToast(\`Applied: \${cls}\`)
       })
     })
@@ -732,6 +778,7 @@ export function generateDevToolsScript(meta) {
           if (c.startsWith('paint:')) target.classList.remove(c)
         })
         target.classList.add(\`paint:\${name}\`)
+        writeClassesToSource(target, Array.from(target.classList).join(' '))
         showToast(\`paint:\${name}\`)
       })
     })
@@ -746,6 +793,7 @@ export function generateDevToolsScript(meta) {
         if (!val) return
         val.split(/\\s+/).forEach(cls => {
           if (cls) target.classList.add(cls)
+          writeClassesToSource(target, Array.from(target.classList).join(' '))
         })
         showToast(\`Added: \${val}\`)
         input.value = ''

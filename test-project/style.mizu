@@ -1,5 +1,6 @@
-@pattern carding {
-  pad:md;
-  paint: #6E96AF;
-  curve:lg;
+/* styles.mizu */
+@token {
+  colors {
+    junior: #ff0000;   /* red */
+  }
 }
