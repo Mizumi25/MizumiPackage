@@ -350,8 +350,9 @@ export default {
   },
   
   depth: {
-    strength: 0.4,           
-    perspective: 1000,       
-    light: { x: -1, y: -1 } 
+    strength: 0.4,
+    perspective: 1000,
+    perspectiveOrigin: '20% 50%',  
+    light: { x: 0, y: -1 }
   },
 }

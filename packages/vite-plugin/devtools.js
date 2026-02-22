@@ -444,6 +444,112 @@ export function generateDevToolsScript(meta) {
       color: #2a2823;
       letter-spacing: 0.1em;
     }
+    
+    #mz-sun {
+      position: fixed;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 2px solid #000;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-family: ui-monospace, monospace;
+      color: #000;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      cursor: grab;
+      z-index: 999999;
+      user-select: none;
+      box-shadow: 0 0 20px rgba(255,255,220,0.8), 0 0 60px rgba(255,255,180,0.3);
+      transition: box-shadow 0.2s;
+      display: none;
+    }
+    #mz-sun:active { cursor: grabbing; }
+    #mz-sun.visible { display: flex; }
+
+    #mz-perspective-panel {
+      position: fixed;
+      bottom: 80px;
+      right: 70px;
+      width: 220px;
+      background: #0e0d0b;
+      border: 1px solid #2a2823;
+      border-radius: 8px;
+      padding: 14px;
+      z-index: 99998;
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      color: #7a7568;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #mz-perspective-panel.visible { display: flex; }
+
+    .mz-persp-label {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #3d3a34;
+      margin-bottom: 4px;
+    }
+
+    .mz-persp-value {
+      color: #c9a96e;
+      font-size: 10px;
+      margin-left: 6px;
+    }
+
+    .mz-persp-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 3px;
+      background: #2a2823;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .mz-persp-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #c9a96e;
+      cursor: pointer;
+    }
+
+    #mz-sun-btn, #mz-persp-btn {
+      position: fixed;
+      z-index: 99999;
+      width: 36px;
+      height: 36px;
+      background: #0e0d0b;
+      border: 1px solid #2a2823;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      transition: all 0.15s;
+      user-select: none;
+    }
+    #mz-sun-btn  { bottom: 70px; right: 20px; }
+    #mz-persp-btn { bottom: 112px; right: 20px; }
+    #mz-sun-btn:hover, #mz-persp-btn:hover { border-color: #c9a96e; transform: scale(1.1); }
+    #mz-sun-btn.active, #mz-persp-btn.active { border-color: #c9a96e; box-shadow: 0 0 0 2px rgba(201,169,110,0.3); }
+
+    #mz-light-crosshair {
+      position: fixed;
+      pointer-events: none;
+      z-index: 999998;
+      display: none;
+    }
+    #mz-light-crosshair.visible { display: block; }
   \`
   document.head.appendChild(style)
 
@@ -1032,6 +1138,139 @@ export function generateDevToolsScript(meta) {
         panelY = null
         document.getElementById('mz-pin-btn').classList.remove('active')
       }
+    })
+    
+    
+    // ── SUN BUTTON ──
+    const sunBtn = document.createElement('div')
+    sunBtn.id    = 'mz-sun-btn'
+    sunBtn.title = 'Light Simulator'
+    sunBtn.innerHTML = '☀'
+    document.body.appendChild(sunBtn)
+
+    // ── PERSPECTIVE BUTTON ──
+    const perspBtn = document.createElement('div')
+    perspBtn.id    = 'mz-persp-btn'
+    perspBtn.title = 'Perspective Control'
+    perspBtn.innerHTML = '⟁'
+    document.body.appendChild(perspBtn)
+
+    // ── SUN CIRCLE ──
+    const sun = document.createElement('div')
+    sun.id    = 'mz-sun'
+    sun.textContent = 'SUN'
+    document.body.appendChild(sun)
+
+    // ── PERSPECTIVE PANEL ──
+    const perspPanel = document.createElement('div')
+    perspPanel.id = 'mz-perspective-panel'
+    perspPanel.innerHTML = \`
+      <div style="color:#c9a96e;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;">Perspective</div>
+
+      <div>
+        <div class="mz-persp-label">Distance <span class="mz-persp-value" id="mz-persp-dist-val">1000px</span></div>
+        <input class="mz-persp-slider" id="mz-persp-dist" type="range" min="200" max="3000" value="1000" step="50">
+      </div>
+
+      <div>
+        <div class="mz-persp-label">Horizontal Origin <span class="mz-persp-value" id="mz-persp-x-val">50%</span></div>
+        <input class="mz-persp-slider" id="mz-persp-x" type="range" min="0" max="100" value="50" step="1">
+      </div>
+
+      <div>
+        <div class="mz-persp-label">Vertical Origin <span class="mz-persp-value" id="mz-persp-y-val">30%</span></div>
+        <input class="mz-persp-slider" id="mz-persp-y" type="range" min="0" max="100" value="30" step="1">
+      </div>
+    \`
+    document.body.appendChild(perspPanel)
+
+    // ── SUN DRAG LOGIC ──
+    let sunActive    = false
+    let sunDragging  = false
+    let sunDragOffX  = 0
+    let sunDragOffY  = 0
+
+    sunBtn.addEventListener('click', () => {
+      sunActive = !sunActive
+      sunBtn.classList.toggle('active', sunActive)
+      if (sunActive) {
+        // Place sun at center of viewport initially
+        sun.style.left = (window.innerWidth / 2 - 30) + 'px'
+        sun.style.top  = (window.innerHeight / 2 - 30) + 'px'
+        sun.classList.add('visible')
+      } else {
+        sun.classList.remove('visible')
+      }
+    })
+
+    sun.addEventListener('mousedown', e => {
+      sunDragging = true
+      const rect  = sun.getBoundingClientRect()
+      sunDragOffX = e.clientX - rect.left
+      sunDragOffY = e.clientY - rect.top
+      e.preventDefault()
+    })
+
+    document.addEventListener('mousemove', e => {
+      if (!sunDragging) return
+
+      const x = e.clientX - sunDragOffX
+      const y = e.clientY - sunDragOffY
+
+      sun.style.left = x + 'px'
+      sun.style.top  = y + 'px'
+
+      // Sun center
+      const sunCX = x + 30
+      const sunCY = y + 30
+
+      // Viewport center
+      const vpCX = window.innerWidth  / 2
+      const vpCY = window.innerHeight / 2
+
+      // Normalize to -1 → 1
+      const lx = ((sunCX - vpCX) / vpCX)
+      const ly = ((sunCY - vpCY) / vpCY)
+
+      // Push to depth engine live
+      if (window.MizumiDepth) {
+        window.MizumiDepth.setLight(lx, ly)
+      }
+    })
+
+    document.addEventListener('mouseup', () => { sunDragging = false })
+
+    // ── PERSPECTIVE PANEL LOGIC ──
+    let perspActive = false
+
+    perspBtn.addEventListener('click', () => {
+      perspActive = !perspActive
+      perspBtn.classList.toggle('active', perspActive)
+      perspPanel.classList.toggle('visible', perspActive)
+    })
+
+    document.getElementById('mz-persp-dist').addEventListener('input', e => {
+      const val = e.target.value
+      document.getElementById('mz-persp-dist-val').textContent = val + 'px'
+      document.documentElement.style.setProperty('--mz-perspective', val + 'px')
+    })
+
+    document.getElementById('mz-persp-x').addEventListener('input', e => {
+      const val = e.target.value
+      document.getElementById('mz-persp-x-val').textContent = val + '%'
+      const y   = document.getElementById('mz-persp-y').value
+      const origin = val + '% ' + y + '%'
+      document.documentElement.style.setProperty('--mz-perspective-origin', origin)
+      if (window.MizumiDepth) window.MizumiDepth.setPerspectiveOrigin(origin)
+    })
+
+    document.getElementById('mz-persp-y').addEventListener('input', e => {
+      const val = e.target.value
+      document.getElementById('mz-persp-y-val').textContent = val + '%'
+      const x   = document.getElementById('mz-persp-x').value
+      const origin = x + '% ' + val + '%'
+      document.documentElement.style.setProperty('--mz-perspective-origin', origin)
+      if (window.MizumiDepth) window.MizumiDepth.setPerspectiveOrigin(origin)
     })
   }
 
