@@ -452,9 +452,6 @@ export function generateDevToolsScript(meta) {
       border-radius: 50%;
       border: 2px solid #000;
       background: rgba(255,255,255,0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
       font-size: 9px;
       font-family: ui-monospace, monospace;
       color: #000;
@@ -468,7 +465,11 @@ export function generateDevToolsScript(meta) {
       display: none;
     }
     #mz-sun:active { cursor: grabbing; }
-    #mz-sun.visible { display: flex; }
+    #mz-sun.visible {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
     #mz-perspective-panel {
       position: fixed;
@@ -1186,59 +1187,56 @@ export function generateDevToolsScript(meta) {
 
     // ── SUN DRAG LOGIC ──
     let sunActive    = false
-    let sunDragging  = false
-    let sunDragOffX  = 0
-    let sunDragOffY  = 0
+    let sunDragging = false
+    let sunOffX     = 0
+    let sunOffY     = 0
 
-    sunBtn.addEventListener('click', () => {
-      sunActive = !sunActive
-      sunBtn.classList.toggle('active', sunActive)
-      if (sunActive) {
-        // Place sun at center of viewport initially
-        sun.style.left = (window.innerWidth / 2 - 30) + 'px'
-        sun.style.top  = (window.innerHeight / 2 - 30) + 'px'
-        sun.classList.add('visible')
-      } else {
-        sun.classList.remove('visible')
-      }
-    })
-
-    sun.addEventListener('mousedown', e => {
+    sun.addEventListener('mousedown', function(e) {
       sunDragging = true
-      const rect  = sun.getBoundingClientRect()
-      sunDragOffX = e.clientX - rect.left
-      sunDragOffY = e.clientY - rect.top
+      var rect    = sun.getBoundingClientRect()
+      sunOffX     = e.clientX - rect.left
+      sunOffY     = e.clientY - rect.top
+      e.stopPropagation()
       e.preventDefault()
     })
 
-    document.addEventListener('mousemove', e => {
+    sun.addEventListener('touchstart', function(e) {
+      sunDragging = true
+      var rect    = sun.getBoundingClientRect()
+      var t       = e.touches[0]
+      sunOffX     = t.clientX - rect.left
+      sunOffY     = t.clientY - rect.top
+      e.stopPropagation()
+      e.preventDefault()
+    }, { passive: false })
+
+    document.addEventListener('mousemove', function(e) {
       if (!sunDragging) return
-
-      const x = e.clientX - sunDragOffX
-      const y = e.clientY - sunDragOffY
-
+      var x = e.clientX - sunOffX
+      var y = e.clientY - sunOffY
       sun.style.left = x + 'px'
       sun.style.top  = y + 'px'
-
-      // Sun center
-      const sunCX = x + 30
-      const sunCY = y + 30
-
-      // Viewport center
-      const vpCX = window.innerWidth  / 2
-      const vpCY = window.innerHeight / 2
-
-      // Normalize to -1 → 1
-      const lx = ((sunCX - vpCX) / vpCX)
-      const ly = ((sunCY - vpCY) / vpCY)
-
-      // Push to depth engine live
-      if (window.MizumiDepth) {
-        window.MizumiDepth.setLight(lx, ly)
-      }
+      var sunCX = x + 30
+      var sunCY = y + 30
+      var lx = (sunCX - window.innerWidth  / 2) / (window.innerWidth  / 2)
+      var ly = (sunCY - window.innerHeight / 2) / (window.innerHeight / 2)
+      if (window.MizumiDepth) window.MizumiDepth.setLight(lx, ly)
     })
 
-    document.addEventListener('mouseup', () => { sunDragging = false })
+    document.addEventListener('touchmove', function(e) {
+      if (!sunDragging) return
+      var t = e.touches[0]
+      var x = t.clientX - sunOffX
+      var y = t.clientY - sunOffY
+      sun.style.left = x + 'px'
+      sun.style.top  = y + 'px'
+      var lx = (x + 30 - window.innerWidth  / 2) / (window.innerWidth  / 2)
+      var ly = (y + 30 - window.innerHeight / 2) / (window.innerHeight / 2)
+      if (window.MizumiDepth) window.MizumiDepth.setLight(lx, ly)
+    }, { passive: false })
+
+    document.addEventListener('mouseup',  function() { sunDragging = false })
+    document.addEventListener('touchend', function() { sunDragging = false })
 
     // ── PERSPECTIVE PANEL LOGIC ──
     let perspActive = false
@@ -1249,26 +1247,23 @@ export function generateDevToolsScript(meta) {
       perspPanel.classList.toggle('visible', perspActive)
     })
 
-    document.getElementById('mz-persp-dist').addEventListener('input', e => {
-      const val = e.target.value
-      document.getElementById('mz-persp-dist-val').textContent = val + 'px'
-      document.documentElement.style.setProperty('--mz-perspective', val + 'px')
+    document.getElementById('mz-persp-dist').addEventListener('input', function(e) {
+      document.getElementById('mz-persp-dist-val').textContent = e.target.value + 'px'
+      document.documentElement.style.setProperty('--mz-perspective', e.target.value + 'px')
     })
 
-    document.getElementById('mz-persp-x').addEventListener('input', e => {
-      const val = e.target.value
-      document.getElementById('mz-persp-x-val').textContent = val + '%'
-      const y   = document.getElementById('mz-persp-y').value
-      const origin = val + '% ' + y + '%'
+    document.getElementById('mz-persp-x').addEventListener('input', function(e) {
+      var y = document.getElementById('mz-persp-y').value
+      var origin = e.target.value + '% ' + y + '%'
+      document.getElementById('mz-persp-x-val').textContent = e.target.value + '%'
       document.documentElement.style.setProperty('--mz-perspective-origin', origin)
       if (window.MizumiDepth) window.MizumiDepth.setPerspectiveOrigin(origin)
     })
 
-    document.getElementById('mz-persp-y').addEventListener('input', e => {
-      const val = e.target.value
-      document.getElementById('mz-persp-y-val').textContent = val + '%'
-      const x   = document.getElementById('mz-persp-x').value
-      const origin = x + '% ' + val + '%'
+    document.getElementById('mz-persp-y').addEventListener('input', function(e) {
+      var x = document.getElementById('mz-persp-x').value
+      var origin = x + '% ' + e.target.value + '%'
+      document.getElementById('mz-persp-y-val').textContent = e.target.value + '%'
       document.documentElement.style.setProperty('--mz-perspective-origin', origin)
       if (window.MizumiDepth) window.MizumiDepth.setPerspectiveOrigin(origin)
     })
