@@ -20,6 +20,8 @@ export class DepthEngine {
         blur:       config.effects?.blur       ?? true,
         saturate:   config.effects?.saturate   ?? true,
         translateZ: config.effects?.translateZ ?? true,
+        rim:        config.effects?.rim        ?? true,  // reflection rim light
+        gradient:   config.effects?.gradient   ?? true,  // inner gradient
       },
       strength:   config.strength   ?? 0.5,
       translateZ: config.translateZ ?? 80,
@@ -58,19 +60,40 @@ export class DepthEngine {
     const amb  = this.config.light.ambient
     const maxZ = this.config.translateZ
 
-    const shadowDist   = depth * 24 * s
-    const shadowBlur   = (1 - depth * 0.6) * 32 * s
-    const shadowSpread = depth * 2 * s
-    const shadowAlpha  = (amb + depth * li) * 0.22 * s
-    const shadowX      = lx * shadowDist * 0.5
-    const shadowY      = ly * shadowDist * 0.5
+    // Distance of light from center (0=overhead, ~1.4=far corner)
+    const lightDist  = Math.sqrt(lx * lx + ly * ly)
+    // Proximity: closer sun = higher value = bigger softer shadow
+    const proximity  = Math.max(0, 1 - lightDist * 0.5)
+
+    const shadowDist   = depth * (12 + proximity * 20) * s
+    const shadowBlur   = depth * (16 + proximity * 40) * s   // fuzzier when close
+    const shadowSpread = depth * (1  + proximity * 4)  * s   // spreads when close
+    const shadowAlpha  = (amb + depth * li) * (0.15 + proximity * 0.12) * s
+    const shadowX      = -lx * shadowDist * 0.5
+    const shadowY      = -ly * shadowDist * 0.5
+
     const scale        = 1 + depth * 0.012 * s
     const brightness   = 1 - (1 - depth) * 0.08 * s
     const saturate     = 1 - (1 - depth) * 0.12 * s
     const backdropBlur = depth < 0.15 ? (0.15 - depth) * 3 * s : 0
     const tz           = depth * maxZ
 
-    return { shadowX, shadowY, shadowBlur, shadowSpread, shadowAlpha, scale, brightness, saturate, backdropBlur, depth, tz }
+    // Rim/reflection: inset on light-facing edge (opposite of shadow direction)
+    const rimX         = lx * shadowDist * 0.4
+    const rimY         = ly * shadowDist * 0.4
+    const rimAlpha     = depth * li * 0.18 * s
+    const rimBlur      = 4 + depth * 8
+
+    // Inner gradient angle: light direction → shadow direction
+    const gradAngleDeg = Math.round(Math.atan2(lx, -ly) * (180 / Math.PI))
+    const gradStrength = depth * li * 0.06 * s   // very subtle
+
+    return {
+      shadowX, shadowY, shadowBlur, shadowSpread, shadowAlpha,
+      rimX, rimY, rimAlpha, rimBlur,
+      gradAngleDeg, gradStrength,
+      scale, brightness, saturate, backdropBlur, depth, tz
+    }
   }
 
   generateDepthCSS(tokens = {}) {
@@ -97,30 +120,39 @@ export class DepthEngine {
     const tiers = Object.entries(zIndex).sort((a, b) => a[1] - b[1])
 
     tiers.forEach(([name, z], i) => {
-      const depth     = i / (tiers.length - 1 || 1)
-      const vars      = this.getDepthVars(depth)
-      const shadowStr = vars.shadowX.toFixed(1) + 'px ' + vars.shadowY.toFixed(1) + 'px ' + vars.shadowBlur.toFixed(1) + 'px ' + vars.shadowSpread.toFixed(1) + 'px rgba(0,0,0,' + vars.shadowAlpha.toFixed(3) + ')'
+      const depth = i / (tiers.length - 1 || 1)
+      const vars  = this.getDepthVars(depth)
+
+      const shadowStr = vars.shadowX.toFixed(1) + 'px ' + vars.shadowY.toFixed(1) + 'px ' +
+                        vars.shadowBlur.toFixed(1) + 'px ' + vars.shadowSpread.toFixed(1) + 'px rgba(0,0,0,' + vars.shadowAlpha.toFixed(3) + ')'
+
+      const rimStr    = 'inset ' + vars.rimX.toFixed(1) + 'px ' + vars.rimY.toFixed(1) + 'px ' +
+                        vars.rimBlur.toFixed(1) + 'px 0px rgba(255,255,255,' + vars.rimAlpha.toFixed(3) + ')'
+
       const filterStr = 'brightness(' + vars.brightness.toFixed(3) + ') saturate(' + vars.saturate.toFixed(3) + ')'
+
+      const gradStr   = 'linear-gradient(' + vars.gradAngleDeg + 'deg, rgba(255,255,255,' + vars.gradStrength.toFixed(3) + ') 0%, rgba(255,255,255,0) 60%)'
 
       lines.push('/* depth tier: ' + name + ' (z=' + z + ') */')
       lines.push('.layer\\:' + name + ' {')
-      lines.push('  --mz-depth-shadow:   ' + shadowStr + ';')
+      lines.push('  --mz-depth-shadow:   ' + shadowStr + ', ' + rimStr + ';')
       lines.push('  --mz-depth-filter:   ' + filterStr + ';')
       lines.push('  --mz-depth-scale:    ' + vars.scale.toFixed(4) + ';')
       lines.push('  --mz-depth-tz:       ' + vars.tz.toFixed(1) + 'px;')
+      lines.push('  --mz-depth-gradient: ' + gradStr + ';')
       if (vars.backdropBlur > 0.01) {
         lines.push('  --mz-depth-backdrop: blur(' + vars.backdropBlur.toFixed(2) + 'px);')
       }
-      lines.push('  box-shadow:      var(--mz-depth-shadow);')
-      lines.push('  filter:          var(--mz-depth-filter);')
-      lines.push('  transform:       translateZ(var(--mz-depth-tz, 0px)) scale(var(--mz-depth-scale, 1));')
-      lines.push('  transform-style: preserve-3d;')
-      lines.push('  transition:      box-shadow 0.3s ease, filter 0.3s ease, transform 0.3s ease;')
+      lines.push('  box-shadow:       var(--mz-depth-shadow);')
+      lines.push('  filter:           var(--mz-depth-filter);')
+      lines.push('  transform:        translateZ(var(--mz-depth-tz, 0px)) scale(var(--mz-depth-scale, 1));')
+      lines.push('  transform-style:  preserve-3d;')
+      lines.push('  transition:       box-shadow 0.3s ease, filter 0.3s ease, transform 0.3s ease, background 0.3s ease;')
       lines.push('}')
       lines.push('')
     })
 
-    lines.push('.depth-flat   { box-shadow: none !important; filter: none !important; transform: none !important; }')
+    lines.push('.depth-flat   { box-shadow: none !important; filter: none !important; transform: none !important; background-image: none !important; }')
     lines.push('.depth-boost  { filter: brightness(1.05) saturate(1.1) !important; }')
     lines.push('.depth-ignore { }')
     lines.push('')
@@ -154,6 +186,15 @@ export class DepthEngine {
     return loDepth + t * (hiDepth - loDepth)
   }
 
+  // Returns [r,g,b] of computed background, or null if transparent/no paint
+  function getBgRGB(el) {
+    var bg = window.getComputedStyle(el).backgroundColor
+    var m  = bg.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/)
+    if (!m) return null
+    if (bg.indexOf('rgba') !== -1 && bg.match(/,\\s*0\\s*\\)/)) return null
+    return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])]
+  }
+
   function applyDepth(el, depth) {
     var s    = CFG.strength
     var lx   = CFG.light.x
@@ -163,28 +204,74 @@ export class DepthEngine {
     var fx   = CFG.effects
     var maxZ = CFG.translateZ
 
-    var shadowDist   = depth * 24 * s
-    var shadowBlur   = (1 - depth * 0.6) * 32 * s
-    var shadowSpread = depth * 2 * s
-    var shadowAlpha  = (amb + depth * li) * 0.22 * s
-    var shadowX      = lx * shadowDist * 0.5
-    var shadowY      = ly * shadowDist * 0.5
+    // Light proximity — drives shadow size and fuzziness
+    var lightDist    = Math.sqrt(lx * lx + ly * ly)
+    var proximity    = Math.max(0, 1 - lightDist * 0.5)
+
+    var shadowDist   = depth * (12 + proximity * 20) * s
+    var shadowBlur   = depth * (16 + proximity * 40) * s
+    var shadowSpread = depth * (1  + proximity * 4)  * s
+    var shadowAlpha  = (amb + depth * li) * (0.15 + proximity * 0.12) * s
+    var shadowX      = -lx * shadowDist * 0.5
+    var shadowY      = -ly * shadowDist * 0.5
+
     var scale        = 1 + depth * 0.012 * s
     var brightness   = 1 - (1 - depth) * 0.08 * s
     var saturate     = 1 - (1 - depth) * 0.12 * s
     var backdropBlur = depth < 0.15 ? (0.15 - depth) * 3 * s : 0
     var tz           = depth * maxZ
 
+    // Rim light — inset on light-facing side
+    var rimX         = lx * shadowDist * 0.4
+    var rimY         = ly * shadowDist * 0.4
+    var rimBlur      = 4 + depth * 8
+    var rimAlpha     = depth * li * 0.18 * s
+
+    // Inner gradient
+    var gradAngleDeg = Math.round(Math.atan2(lx, -ly) * (180 / Math.PI))
+    var gradStrength = depth * li * 0.06 * s
+
+    // Detect transparent / no paint
+    var rgb           = getBgRGB(el)
+    var isTransparent = !rgb
+
+    // ── SHADOW + RIM ─────────────────────────────────────────
     if (fx.shadow && shadowAlpha > 0.005) {
-      var depthShadow = shadowX.toFixed(1) + 'px ' + shadowY.toFixed(1) + 'px ' + shadowBlur.toFixed(1) + 'px ' + shadowSpread.toFixed(1) + 'px rgba(0,0,0,' + shadowAlpha.toFixed(3) + ')'
-      var existing    = el.style.boxShadow
-      if (existing && existing !== 'none' && existing !== '') {
-        el.style.setProperty('--mz-depth-shadow', existing + ', ' + depthShadow)
+      var dropShadow, rimShadow
+
+      if (isTransparent) {
+        // No paint: white directional glow + centered bloom
+        dropShadow = shadowX.toFixed(1) + 'px ' + shadowY.toFixed(1) + 'px ' +
+                     shadowBlur.toFixed(1) + 'px ' + shadowSpread.toFixed(1) +
+                     'px rgba(255,255,255,' + (shadowAlpha * 0.6).toFixed(3) + ')'
+        var bloomAlpha = (depth * li * 0.12 * s).toFixed(3)
+        rimShadow = '0px 0px ' + (depth * 20 * s).toFixed(1) + 'px ' +
+                    (depth * 6 * s).toFixed(1) + 'px rgba(255,255,255,' + bloomAlpha + ')'
       } else {
-        el.style.setProperty('--mz-depth-shadow', depthShadow)
+        // Painted: dark drop shadow + inset rim highlight
+        dropShadow = shadowX.toFixed(1) + 'px ' + shadowY.toFixed(1) + 'px ' +
+                     shadowBlur.toFixed(1) + 'px ' + shadowSpread.toFixed(1) +
+                     'px rgba(0,0,0,' + shadowAlpha.toFixed(3) + ')'
+        rimShadow = 'inset ' + rimX.toFixed(1) + 'px ' + rimY.toFixed(1) + 'px ' +
+                    rimBlur.toFixed(1) + 'px 0px rgba(255,255,255,' + rimAlpha.toFixed(3) + ')'
       }
+
+      el.style.setProperty('--mz-depth-shadow', dropShadow + ', ' + rimShadow)
     }
 
+    // -- INNER GRADIENT (white lit-side inset only, safe on any background) --
+    // Only a soft white inset on the light-facing side. No dark inset —
+    // darkening destroys light/white backgrounds turning them grey.
+    if (fx.gradient && !isTransparent && gradStrength > 0.003) {
+      var insetSize = (80 + depth * 60).toFixed(0)
+      var litAlpha  = (gradStrength * 1.5).toFixed(3)
+      var litInset  = 'inset ' + (lx * 30).toFixed(1) + 'px ' + (ly * 30).toFixed(1) + 'px ' +
+                      insetSize + 'px -' + (insetSize * 0.5).toFixed(0) + 'px rgba(255,255,255,' + litAlpha + ')'
+      var cur = el.style.getPropertyValue('--mz-depth-shadow')
+      if (cur) el.style.setProperty('--mz-depth-shadow', cur + ', ' + litInset)
+    }
+
+    // ── FILTER ───────────────────────────────────────────────
     var lightFacing = Math.max(0, (-lx * 0.5 + -ly * 0.5))
     var lightBoost  = lightFacing * depth * li * 0.06 * s
     var finalBright = brightness + lightBoost
@@ -220,9 +307,10 @@ export class DepthEngine {
         transition:
           box-shadow  0.3s cubic-bezier(0.4,0,0.2,1),
           filter      0.3s cubic-bezier(0.4,0,0.2,1),
-          transform   0.3s cubic-bezier(0.4,0,0.2,1);
+          transform   0.3s cubic-bezier(0.4,0,0.2,1),
+          background  0.3s cubic-bezier(0.4,0,0.2,1);
       }
-      .depth-flat  { box-shadow: none !important; filter: none !important; transform: none !important; }
+      .depth-flat  { box-shadow: none !important; filter: none !important; transform: none !important; background-image: none !important; }
       .depth-boost { filter: brightness(1.05) saturate(1.1) !important; }
     \`
     document.head.appendChild(style)
