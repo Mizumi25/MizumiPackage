@@ -639,7 +639,286 @@ OUTPUT (.mizumi/):
   mizumi-helpers.js   JS class name helpers
   mizumi.meta.json    Config metadata
 `)
+  },
+  
+  
+  
+  
+  // ── ADD THESE TO THE commands OBJECT IN packages/cli/index.js ──
+
+
+  // ── mizumi sync:defaults ──
+  // Reads packages/core/defaults.js and syncs into pattern-expander.js,
+  // parser.js, animation-engine parent (index.js), variant-generator.js
+  async ['sync:defaults']() {
+    console.log('🌊 Mizumi: Syncing defaults...\n')
+
+    const __dirname  = path.dirname(fileURLToPath(import.meta.url))
+    const coreDir    = path.resolve(__dirname, '../core')
+    const defaultsPath = path.resolve(coreDir, 'defaults.js')
+
+    if (!fs.existsSync(defaultsPath)) {
+      console.error('❌ packages/core/defaults.js not found')
+      process.exit(1)
+    }
+
+    const { DEFAULT_TOKENS, DEFAULT_PATTERNS, DEFAULT_ANIMATIONS, DEFAULT_RULES } =
+      await import(pathToFileURL(defaultsPath).href + `?t=${Date.now()}`)
+
+    // ── 1. Sync patterns into pattern-expander.js ──
+    const peFile = path.resolve(coreDir, 'pattern-expander.js')
+    let   peSrc  = fs.readFileSync(peFile, 'utf8')
+
+    const patternsJSON = JSON.stringify(DEFAULT_PATTERNS, null, 4)
+      .replace(/"([^"]+)":/g, "'$1':")      // use single quotes for keys
+      .replace(/"/g, "'")                    // use single quotes for values
+
+    const peMarkerStart = '// <<<DEFAULTS:PATTERNS:START>>>'
+    const peMarkerEnd   = '// <<<DEFAULTS:PATTERNS:END>>>'
+
+    if (peSrc.includes(peMarkerStart)) {
+      // Replace existing block
+      const re  = new RegExp(`${peMarkerStart}[\\s\\S]*?${peMarkerEnd}`)
+      peSrc = peSrc.replace(re,
+        `${peMarkerStart}\n    ...${patternsJSON},\n    ${peMarkerEnd}`)
+    } else {
+      // Inject into constructor — find: this.patterns = {
+      peSrc = peSrc.replace(
+        'this.patterns = {',
+        `this.patterns = {\n      ${peMarkerStart}\n      ...${patternsJSON},\n      ${peMarkerEnd}`
+      )
+    }
+    fs.writeFileSync(peFile, peSrc)
+    console.log(`✅ Patterns synced  → pattern-expander.js (${Object.keys(DEFAULT_PATTERNS).length} patterns)`)
+
+    // ── 2. Sync tokens into parser.js ──
+    const parserFile = path.resolve(coreDir, 'parser.js')
+    let   parserSrc  = fs.readFileSync(parserFile, 'utf8')
+
+    const tokensJSON = JSON.stringify(DEFAULT_TOKENS, null, 4)
+
+    const tokMarkerStart = '// <<<DEFAULTS:TOKENS:START>>>'
+    const tokMarkerEnd   = '// <<<DEFAULTS:TOKENS:END>>>'
+
+    if (parserSrc.includes(tokMarkerStart)) {
+      const re = new RegExp(`${tokMarkerStart}[\\s\\S]*?${tokMarkerEnd}`)
+      parserSrc = parserSrc.replace(re,
+        `${tokMarkerStart}\n    const DEFAULT_TOKENS = ${tokensJSON}\n    c = this._mergeDeep(DEFAULT_TOKENS, c)\n    ${tokMarkerEnd}`)
+    } else {
+      // Inject at start of parse() method, after: const c = this.config
+      parserSrc = parserSrc.replace(
+        'parse() {\n    const vars = {}\n    const c    = this.config',
+        `parse() {\n    const vars = {}\n    let   c    = this.config\n    ${tokMarkerStart}\n    const DEFAULT_TOKENS = ${tokensJSON}\n    c = this._mergeDeep(DEFAULT_TOKENS, c)\n    ${tokMarkerEnd}`
+      )
+
+      // Add _mergeDeep helper if not present
+      if (!parserSrc.includes('_mergeDeep')) {
+        parserSrc = parserSrc.replace(
+          'export class TokenParser {',
+          `export class TokenParser {
+  _mergeDeep(target, source) {
+    const out = { ...target }
+    for (const key of Object.keys(source || {})) {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        out[key] = this._mergeDeep(target[key] || {}, source[key])
+      } else {
+        out[key] = source[key]
+      }
+    }
+    return out
   }
+`
+        )
+      }
+    }
+    fs.writeFileSync(parserFile, parserSrc)
+    console.log(`✅ Tokens synced    → parser.js`)
+
+    // ── 3. Sync animations into core/index.js ──
+    const indexFile = path.resolve(coreDir, 'index.js')
+    let   indexSrc  = fs.readFileSync(indexFile, 'utf8')
+
+    const animJSON       = JSON.stringify(DEFAULT_ANIMATIONS, null, 4)
+    const animMarkerStart = '// <<<DEFAULTS:ANIMATIONS:START>>>'
+    const animMarkerEnd   = '// <<<DEFAULTS:ANIMATIONS:END>>>'
+
+    if (indexSrc.includes(animMarkerStart)) {
+      const re = new RegExp(`${animMarkerStart}[\\s\\S]*?${animMarkerEnd}`)
+      indexSrc = indexSrc.replace(re,
+        `${animMarkerStart}\n    const DEFAULT_ANIMATIONS = ${animJSON}\n    ${animMarkerEnd}`)
+    } else {
+      // Find AnimationEngine constructor call and inject defaults merge
+      indexSrc = indexSrc.replace(
+        'this.animationEngine = new AnimationEngine(',
+        `${animMarkerStart}\n    const DEFAULT_ANIMATIONS = ${animJSON}\n    ${animMarkerEnd}\n    this.animationEngine = new AnimationEngine(`
+      )
+      // Now fix the actual merge — find the animations arg
+      indexSrc = indexSrc.replace(
+        'new AnimationEngine(\n      config.animations',
+        'new AnimationEngine(\n      { ...DEFAULT_ANIMATIONS, ...config.animations }'
+      )
+      // Handle single-line version too
+      indexSrc = indexSrc.replace(
+        /new AnimationEngine\(\s*config\.animations\s*,/g,
+        'new AnimationEngine({ ...DEFAULT_ANIMATIONS, ...config.animations },'
+      )
+    }
+    fs.writeFileSync(indexFile, indexSrc)
+    console.log(`✅ Animations synced → index.js (${Object.keys(DEFAULT_ANIMATIONS).length} animations)`)
+
+    console.log('\n✅ Sync complete — rebuild to apply: npx mizumi build')
+  },
+
+
+  // ── mizumi add:pattern <name> "<utilities>" ──
+  async ['add:pattern']() {
+    const name  = args[1]
+    const value = args[2]
+
+    if (!name || !value) {
+      console.log('Usage: node cli/index.js add:pattern <name> "<utilities>"')
+      console.log('Example: node cli/index.js add:pattern flex-center "display:flex align-x:center align-yi:center"')
+      return
+    }
+
+    const __dirname    = path.dirname(fileURLToPath(import.meta.url))
+    const defaultsPath = path.resolve(__dirname, '../core/defaults.js')
+
+    if (!fs.existsSync(defaultsPath)) {
+      console.error('❌ packages/core/defaults.js not found')
+      process.exit(1)
+    }
+
+    let src = fs.readFileSync(defaultsPath, 'utf8')
+
+    // Find the closing of DEFAULT_PATTERNS and inject before it
+    const insertBefore = '\n}\n\nexport const DEFAULT_ANIMATIONS'
+    if (!src.includes(insertBefore)) {
+      console.error('❌ Could not find insertion point in defaults.js')
+      process.exit(1)
+    }
+
+    const line = `  '${name}': '${value}',`
+
+    // Check if already exists
+    if (src.includes(`'${name}':`)) {
+      // Update existing
+      src = src.replace(
+        new RegExp(`'${name}':\\s*'[^']*'`),
+        `'${name}': '${value}'`
+      )
+      console.log(`✏️  Updated pattern: ${name}`)
+    } else {
+      // Insert before closing brace of DEFAULT_PATTERNS
+      src = src.replace(insertBefore, `\n${line}${insertBefore}`)
+      console.log(`✅ Added pattern: ${name}`)
+    }
+
+    fs.writeFileSync(defaultsPath, src)
+    console.log(`   Run sync:defaults to apply → node packages/cli/index.js sync:defaults`)
+  },
+
+
+  // ── mizumi add:token <category> <name> <value> ──
+  async ['add:token']() {
+    const category = args[1]
+    const name     = args[2]
+    const value    = args[3]
+
+    if (!category || !name || !value) {
+      console.log('Usage: node cli/index.js add:token <category> <name> <value>')
+      console.log('Example: node cli/index.js add:token colors brand "#ff6b6b"')
+      console.log('Example: node cli/index.js add:token spacing hero "120px"')
+      return
+    }
+
+    const __dirname    = path.dirname(fileURLToPath(import.meta.url))
+    const defaultsPath = path.resolve(__dirname, '../core/defaults.js')
+
+    if (!fs.existsSync(defaultsPath)) {
+      console.error('❌ packages/core/defaults.js not found')
+      process.exit(1)
+    }
+
+    let src = fs.readFileSync(defaultsPath, 'utf8')
+
+    // Check if already exists
+    if (src.includes(`${name}:`) ) {
+      src = src.replace(
+        new RegExp(`(${name}:\\s*)(['"\`][^'"\`]*['"\`]|\\d+)`),
+        `$1'${value}'`
+      )
+      console.log(`✏️  Updated token: ${category}.${name} = ${value}`)
+    } else {
+      // Find the category block and inject
+      const catMarker = `  ${category}: {`
+      if (!src.includes(catMarker)) {
+        console.error(`❌ Token category "${category}" not found in defaults.js`)
+        console.log(`   Valid categories: colors, spacing, typography, fonts, radius, shadows, easing, duration, blur, opacity, zIndex, leading, tracking`)
+        process.exit(1)
+      }
+      src = src.replace(catMarker, `${catMarker}\n    ${name}: '${value}',`)
+      console.log(`✅ Added token: ${category}.${name} = ${value}`)
+    }
+
+    fs.writeFileSync(defaultsPath, src)
+    console.log(`   Run sync:defaults to apply → node packages/cli/index.js sync:defaults`)
+  },
+
+
+  // ── mizumi add:animation <name> ──
+  // Opens a prompt-style flow (just prints the template for now)
+  async ['add:animation']() {
+    const name = args[1]
+
+    if (!name) {
+      console.log('Usage: node cli/index.js add:animation <name>')
+      console.log('Example: node cli/index.js add:animation hover-glow')
+      return
+    }
+
+    const __dirname    = path.dirname(fileURLToPath(import.meta.url))
+    const defaultsPath = path.resolve(__dirname, '../core/defaults.js')
+
+    if (!fs.existsSync(defaultsPath)) {
+      console.error('❌ packages/core/defaults.js not found')
+      process.exit(1)
+    }
+
+    let src = fs.readFileSync(defaultsPath, 'utf8')
+
+    if (src.includes(`'${name}':`)) {
+      console.log(`⚠️  Animation "${name}" already exists in defaults.js`)
+      console.log('   Edit it directly in packages/core/defaults.js')
+      return
+    }
+
+    // Detect type from name
+    let template
+    if (name.startsWith('hover-')) {
+      template = `  '${name}': {\n    hover: { y: -6, duration: 0.15, ease: 'power2.out' },\n  },`
+    } else if (name.startsWith('active-')) {
+      template = `  '${name}': {\n    active: { scale: 0.95, duration: 0.1 },\n  },`
+    } else if (name.startsWith('scroll-')) {
+      template = `  '${name}': {\n    from: { opacity: 0, y: 30 },\n    to:   { opacity: 1, y: 0  },\n    duration: 0.6,\n    ease: 'power2.out',\n    scrollTrigger: { trigger: 'self', start: 'top 85%' },\n  },`
+    } else if (name.startsWith('stagger-')) {
+      template = `  '${name}': {\n    targets: 'children',\n    stagger: 0.1,\n    from: { opacity: 0, y: 20 },\n    to:   { opacity: 1, y: 0  },\n  },`
+    } else {
+      template = `  '${name}': {\n    from: { opacity: 0, y: 40 },\n    to:   { opacity: 1, y: 0  },\n    duration: 0.3,\n    ease: 'power2.out',\n  },`
+    }
+
+    // Inject before closing of DEFAULT_ANIMATIONS
+    const insertBefore = '\n}\n\nexport const DEFAULT_RULES'
+    src = src.replace(insertBefore, `\n${template}${insertBefore}`)
+
+    fs.writeFileSync(defaultsPath, src)
+    console.log(`✅ Added animation: ${name}`)
+    console.log(`   Edit the config in packages/core/defaults.js if needed`)
+    console.log(`   Run sync:defaults to apply → node packages/cli/index.js sync:defaults`)
+  },
+  
+  
+  
 }
 
 // Run command
@@ -650,8 +929,17 @@ if (!command || command === 'help') {
     console.error('❌', err.message)
     process.exit(1)
   })
-} else {
+} else if (command === 'sync:defaults') {
+  Promise.resolve(commands['sync:defaults']()).catch(err => { console.error('❌', err.message); process.exit(1) })
+} else if (command === 'add:pattern') {
+  Promise.resolve(commands['add:pattern']()).catch(err => { console.error('❌', err.message); process.exit(1) })
+} else if (command === 'add:token') {
+  Promise.resolve(commands['add:token']()).catch(err => { console.error('❌', err.message); process.exit(1) })
+} else if (command === 'add:animation') {
+  Promise.resolve(commands['add:animation']()).catch(err => { console.error('❌', err.message); process.exit(1) })
+}
+else {
   console.error(`❌ Unknown command: ${command}`)
   console.log('Run: npx mizumi help')
   process.exit(1)
-}
+} 

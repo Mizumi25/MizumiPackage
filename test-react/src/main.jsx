@@ -4,6 +4,7 @@ import App from './App'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import '../.mizumi/mizumi.css'
+import './main.css'
 
 // Make gsap global so mizumi-runtime can find it
 window.gsap = gsap
