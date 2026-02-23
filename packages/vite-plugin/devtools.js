@@ -583,6 +583,69 @@ export function generateDevToolsScript(meta) {
       margin-bottom: 2px;
     }
     #mz-dim-hud-title span { color: #3d3a34; font-size: 9px; }
+    #mz-dim-hud-close {
+      background: none;
+      border: 1px solid #2a2823;
+      border-radius: 3px;
+      color: #5a5650;
+      font-size: 11px;
+      line-height: 1;
+      padding: 1px 5px;
+      cursor: pointer;
+      transition: all 0.1s;
+      font-family: inherit;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    #mz-dim-hud-close:hover { border-color: #c9a96e; color: #c9a96e; }
+
+    /* ── Light HUD ── */
+    #mz-light-hud {
+      position: fixed;
+      z-index: 99998;
+      background: #0e0d0b;
+      border: 1px solid #2a2823;
+      border-radius: 14px;
+      padding: 10px 16px 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      color: #7a7568;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 280px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      user-select: none;
+      bottom: 70px;
+      right: 64px;
+    }
+    #mz-light-hud.visible { display: flex; }
+    #mz-light-hud-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #f0c060;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    #mz-light-hud-title span { color: #3d3a34; font-size: 9px; }
+    #mz-light-hud-close {
+      background: none;
+      border: 1px solid #2a2823;
+      border-radius: 3px;
+      color: #5a5650;
+      font-size: 11px;
+      line-height: 1;
+      padding: 1px 5px;
+      cursor: pointer;
+      transition: all 0.1s;
+      font-family: inherit;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    #mz-light-hud-close:hover { border-color: #f0c060; color: #f0c060; }
 
     #mz-dim-hud-knobs {
       display: grid;
@@ -1377,11 +1440,23 @@ export function generateDevToolsScript(meta) {
 
     document.addEventListener('mouseup', () => { dragging = false })
 
+    // ── DevTools UI guard — prevent inspecting our own widgets ──
+    function isDevToolsUI(el) {
+      return el.closest('#mz-panel') ||
+             el.closest('#mz-devtools-toggle') ||
+             el.closest('#mz-sun-btn') ||
+             el.closest('#mz-sun') ||
+             el.closest('#mz-dim-hud') ||
+             el.closest('#mz-light-hud') ||
+             el.closest('#mz-copy-toast') ||
+             el.closest('#mz-highlight')
+    }
+
     // Hover detection
     document.addEventListener('mouseover', e => {
       if (!enabled || dragging) return
       const el = e.target
-      if (el.closest('#mz-panel') || el.closest('#mz-devtools-toggle')) return
+      if (isDevToolsUI(el)) return
 
       updateHighlight(el)
 
@@ -1397,7 +1472,7 @@ export function generateDevToolsScript(meta) {
 
     document.addEventListener('mouseout', e => {
       if (!enabled || pinned) return
-      if (!e.relatedTarget || e.relatedTarget.closest('#mz-panel') || e.relatedTarget.closest('#mz-devtools-toggle')) return
+      if (!e.relatedTarget || isDevToolsUI(e.relatedTarget)) return
       // Keep panel visible when moving to it
       if (e.relatedTarget && !e.relatedTarget.closest('#mz-panel')) {
         updateHighlight(null)
@@ -1407,7 +1482,7 @@ export function generateDevToolsScript(meta) {
     // Click to pin on element
     document.addEventListener('click', e => {
       if (!enabled) return
-      if (e.target.closest('#mz-panel') || e.target.closest('#mz-devtools-toggle')) return
+      if (isDevToolsUI(e.target)) return
       e.preventDefault()
       e.stopPropagation()
       target = e.target
@@ -1523,6 +1598,7 @@ export function generateDevToolsScript(meta) {
         <div id="mz-dim-hud-title">
           ⬡ DIMENSION
           <span>drag knobs up/down to adjust</span>
+          <button id="mz-dim-hud-close">×</button>
         </div>
         <div id="mz-dim-hud-knobs">
           \${makeKnob('mz-dk-tilt',    'Tilt',      d.tiltStrength,  0,   45,   '°')}
@@ -1550,10 +1626,54 @@ export function generateDevToolsScript(meta) {
           <div class="mz-hud-pill \${d.resetOnLeave   ? 'on' : ''}" data-toggle="resetOnLeave">↺ Reset</div>
         </div>
       \`
+      // close button event — re-attach each buildHud call
+      const closeBtn = dimHud.querySelector('#mz-dim-hud-close')
+      if (closeBtn) closeBtn.addEventListener('click', () => dimHud.classList.remove('visible'))
     }
 
     buildHud()
     document.body.appendChild(dimHud)
+
+    // ── LIGHT HUD ──────────────────────────────────────────────
+    // Floating controls for MizumiDepth light + shadow engine
+    const lightHud = document.createElement('div')
+    lightHud.id = 'mz-light-hud'
+    lightHud.innerHTML = \`
+      <div id="mz-light-hud-title">
+        ☀ LIGHT &amp; DEPTH
+        <span>drag knobs up/down</span>
+        <button id="mz-light-hud-close">×</button>
+      </div>
+      <div id="mz-dim-hud-knobs" style="grid-template-columns:repeat(3,1fr)">
+        \${makeKnob('mz-lk-intensity', 'Intensity', 0.6,  0, 1,    '')}
+        \${makeKnob('mz-lk-ambient',   'Ambient',   0.4,  0, 1,    '')}
+        \${makeKnob('mz-lk-strength',  'Strength',  0.5,  0, 1.5,  '')}
+      </div>
+      <div id="mz-dim-hud-row2">
+        <div class="mz-hud-slider-group">
+          <div class="mz-hud-slider-label">Z Depth <span id="mz-lhs-z-val">80px</span></div>
+          <input class="mz-hud-slider" id="mz-lhs-z" type="range" min="0" max="200" step="1" value="80">
+        </div>
+        <div class="mz-hud-slider-group">
+          <div class="mz-hud-slider-label">Perspective <span id="mz-lhs-persp-val">1200px</span></div>
+          <input class="mz-hud-slider" id="mz-lhs-persp" type="range" min="400" max="3000" step="50" value="1200">
+        </div>
+      </div>
+      <div id="mz-dim-hud-toggles">
+        <div class="mz-hud-pill on"  data-ltoggle="shadow">◼ Shadow</div>
+        <div class="mz-hud-pill on"  data-ltoggle="brightness">☀ Bright</div>
+        <div class="mz-hud-pill on"  data-ltoggle="rim">◎ Rim</div>
+        <div class="mz-hud-pill on"  data-ltoggle="gradient">▣ Grad</div>
+        <div class="mz-hud-pill on"  data-ltoggle="blur">◌ Blur</div>
+      </div>
+    \`
+    document.body.appendChild(lightHud)
+
+    // Close light hud
+    lightHud.querySelector('#mz-light-hud-close').addEventListener('click', () => lightHud.classList.remove('visible'))
+
+    // Show light hud when sun is activated
+    // (sunBtn click handler updated below)
 
     // ── KNOB DRAG LOGIC ────────────────────────────────────────
     // Drag up = increase, drag down = decrease (like Figma/Spline)
@@ -1677,11 +1797,104 @@ export function generateDevToolsScript(meta) {
       })
     }
 
+    // ── LIGHT HUD KNOB EVENTS ──────────────────────────────────
+    function attachLightKnobEvents() {
+      const lightKnobMap = {
+        'mz-lk-intensity': (v) => { if (window.MizumiDepth) window.MizumiDepth.setLightConfig?.({ intensity: v }) },
+        'mz-lk-ambient':   (v) => { if (window.MizumiDepth) window.MizumiDepth.setLightConfig?.({ ambient: v }) },
+        'mz-lk-strength':  (v) => { if (window.MizumiDepth) window.MizumiDepth.setStrength?.(v) },
+      }
+      Object.entries(lightKnobMap).forEach(([id, setter]) => {
+        const svg = document.getElementById(id)
+        if (!svg) return
+        let lDragging = false, lStartY = 0, lStartVal = 0
+        const min = parseFloat(svg.dataset.min)
+        const max = parseFloat(svg.dataset.max)
+        const unit = svg.dataset.unit
+        const R = 16, cx = 22, cy = 22
+        const startAngle = 130, sweepAngle = 280
+
+        function updateLightKnob(val) {
+          const norm = Math.max(0, Math.min(1, (val - min) / (max - min)))
+          const startRad = (startAngle - 90) * Math.PI / 180
+          function arcPath(fraction) {
+            const angle = startAngle + fraction * sweepAngle
+            const rad   = (angle - 90) * Math.PI / 180
+            const ex    = cx + R * Math.cos(rad)
+            const ey    = cy + R * Math.sin(rad)
+            const large = fraction * sweepAngle > 180 ? 1 : 0
+            const sx    = cx + R * Math.cos(startRad)
+            const sy    = cy + R * Math.sin(startRad)
+            return \`M \${sx.toFixed(2)} \${sy.toFixed(2)} A \${R} \${R} 0 \${large} 1 \${ex.toFixed(2)} \${ey.toFixed(2)}\`
+          }
+          const fill = document.getElementById(id + '-fill')
+          const dot  = document.getElementById(id + '-dot')
+          if (fill) fill.setAttribute('d', arcPath(norm))
+          if (dot) {
+            const angle = startAngle + norm * sweepAngle
+            const rad   = (angle - 90) * Math.PI / 180
+            dot.setAttribute('cx', (cx + (R - 0.5) * Math.cos(rad)).toFixed(2))
+            dot.setAttribute('cy', (cy + (R - 0.5) * Math.sin(rad)).toFixed(2))
+          }
+          const valEl = document.getElementById(id + '-val')
+          if (valEl) valEl.textContent = val.toFixed(2) + unit
+          svg.dataset.val = val
+        }
+
+        function onLightMove(clientY) {
+          const dy = lStartY - clientY
+          const range = max - min
+          let newVal = lStartVal + dy * (range / 200)
+          newVal = Math.max(min, Math.min(max, newVal))
+          updateLightKnob(newVal)
+          setter(newVal)
+        }
+
+        svg.addEventListener('mousedown', e => { lDragging = true; lStartY = e.clientY; lStartVal = parseFloat(svg.dataset.val); e.preventDefault() })
+        svg.addEventListener('touchstart', e => { lDragging = true; lStartY = e.touches[0].clientY; lStartVal = parseFloat(svg.dataset.val); e.preventDefault() }, { passive: false })
+        document.addEventListener('mousemove', e => { if (lDragging) onLightMove(e.clientY) })
+        document.addEventListener('touchmove', e => { if (lDragging) onLightMove(e.touches[0].clientY) }, { passive: false })
+        document.addEventListener('mouseup',  () => { lDragging = false })
+        document.addEventListener('touchend', () => { lDragging = false })
+      })
+    }
+
+    // ── LIGHT HUD SLIDER + TOGGLE EVENTS ─────────────────────
+    function attachLightSliderEvents() {
+      const zEl = document.getElementById('mz-lhs-z')
+      const zVal = document.getElementById('mz-lhs-z-val')
+      if (zEl) zEl.addEventListener('input', () => {
+        const v = parseFloat(zEl.value)
+        if (zVal) zVal.textContent = Math.round(v) + 'px'
+        if (window.MizumiDepth) window.MizumiDepth.setTranslateZ?.(v)
+      })
+
+      const pEl = document.getElementById('mz-lhs-persp')
+      const pVal = document.getElementById('mz-lhs-persp-val')
+      if (pEl) pEl.addEventListener('input', () => {
+        const v = parseFloat(pEl.value)
+        if (pVal) pVal.textContent = Math.round(v) + 'px'
+        if (window.MizumiDepth) window.MizumiDepth.setPerspective?.(v)
+      })
+
+      lightHud.querySelectorAll('.mz-hud-pill[data-ltoggle]').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const key = pill.dataset.ltoggle
+          if (!window.MizumiDepth) return
+          const cur = window.MizumiDepth.getEffects?.()[key] ?? true
+          window.MizumiDepth.setEffect?.(key, !cur)
+          pill.classList.toggle('on', !cur)
+        })
+      })
+    }
+
     // Init HUD events once DOM is in place
     setTimeout(() => {
       attachKnobEvents()
       attachHudSliderEvents()
       attachHudToggleEvents()
+      attachLightKnobEvents()
+      attachLightSliderEvents()
     }, 0)
 
     // ── TOGGLE HUD via Alt+D ───────────────────────────────────
@@ -1705,8 +1918,10 @@ export function generateDevToolsScript(meta) {
         sun.style.left = (window.innerWidth / 2 - 30) + 'px'
         sun.style.top  = (window.innerHeight / 2 - 30) + 'px'
         sun.classList.add('visible')
+        lightHud.classList.add('visible')
       } else {
         sun.classList.remove('visible')
+        lightHud.classList.remove('visible')
       }
     })
 
