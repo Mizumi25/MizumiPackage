@@ -428,7 +428,7 @@ export function loadMizuFiles(dir) {
       } else if (entry.isFile() && entry.name.endsWith('.mizu')) {
         try {
           configs.push(parser.parseFile(fullPath))
-          console.log(`🌊 Mizumi: loaded ${fullPath}`)
+          console.log(`💮 Mizumi: loaded ${fullPath}`)
         } catch (e) {
           console.warn(`⚠️  Mizumi: failed to parse ${fullPath} — ${e.message}`)
         }

@@ -125,7 +125,7 @@ const commands = {
 
   // ── mizumi init ──
   init() {
-    console.log('🌊 Initializing Mizumi...\n')
+    console.log('💮 Initializing Mizumi...\n')
 
     const jsConfig = `// mizumi.config.js
 export default {
@@ -328,12 +328,12 @@ export default {
       console.log('✅ Created styles.mizu')
     }
 
-    console.log('\n🌊 Run: npx mizumi build\n')
+    console.log('\n💮 Run: npx mizumi build\n')
   },
 
   // ── mizumi build ──
   async build() {
-    console.log('🌊 Mizumi: Building...\n')
+    console.log('💮 Mizumi: Building...\n')
     try {
       const cwd     = process.cwd()
       const config  = await loadConfig()
@@ -397,14 +397,14 @@ export default {
 
   // ── mizumi watch ──
   async watch() {
-    console.log('🌊 Mizumi: Watching...\n')
+    console.log('💮 Mizumi: Watching...\n')
     await commands.build()
     watch(loadConfig, Mizumi, generateDevToolsScript)
   },
 
   // ── mizumi validate ──
   async validate() {
-    console.log('🌊 Mizumi: Validating config...\n')
+    console.log('💮 Mizumi: Validating config...\n')
     try {
       const config    = await loadConfig()
       const validator = new Validator(config)
@@ -435,7 +435,7 @@ export default {
 
   // ── mizumi analyze ──
   async analyze() {
-    console.log('🌊 Mizumi: Analyzing design system...\n')
+    console.log('💮 Mizumi: Analyzing design system...\n')
     try {
       const config  = await loadConfig()
       const mizumi  = new Mizumi(config)
@@ -593,7 +593,7 @@ export default {
       else { unknown.push(cls) }
     }
 
-    console.log('\n🌊 Mizumi equivalent:\n')
+    console.log('\n💮 Mizumi equivalent:\n')
     console.log(converted.join('\n'))
 
     if (unknown.length > 0) {
@@ -606,7 +606,7 @@ export default {
 
   // ── mizumi docs ──
   async docs() {
-    console.log('🌊 Mizumi: Generating docs...\n')
+    console.log('💮 Mizumi: Generating docs...\n')
     try {
       const config = await loadConfig()
       const docs   = new DocsGenerator(config)
@@ -620,7 +620,7 @@ export default {
   // ── mizumi help ──
   help() {
     console.log(`
-🌊 Mizumi CLI
+💮 Mizumi CLI
 
 COMMANDS:
   init        Create mizumi.config.js and styles.mizu starter files
@@ -663,7 +663,7 @@ OUTPUT (.mizumi/):
   // Reads packages/core/defaults.js and syncs into pattern-expander.js,
   // parser.js, animation-engine parent (index.js), variant-generator.js
   async ['sync:defaults']() {
-    console.log('🌊 Mizumi: Syncing defaults...\n')
+    console.log('💮 Mizumi: Syncing defaults...\n')
 
     const __dirname  = path.dirname(fileURLToPath(import.meta.url))
     const coreDir    = path.resolve(__dirname, '../core')

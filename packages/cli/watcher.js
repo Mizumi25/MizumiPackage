@@ -107,7 +107,7 @@ export async function watch(loadConfig, Mizumi, generateDevToolsScript) {
       const htmlFiles = findHTMLFiles(cwd)
       htmlFiles.forEach(injectDevToolsTag)
       if (htmlFiles.length > 0) {
-        console.log(`   🌊 DevTools active on ${htmlFiles.length} HTML file(s) — open in browser\n`)
+        console.log(`   💮 DevTools active on ${htmlFiles.length} HTML file(s) — open in browser\n`)
       }
     } catch (err) {
       console.error('❌ DevTools build failed:', err.message)
@@ -116,7 +116,7 @@ export async function watch(loadConfig, Mizumi, generateDevToolsScript) {
 
   // ── Cleanup on exit — strip injected tags from HTML ──
   const cleanup = () => {
-    console.log('\n🌊 Mizumi: Stopping watch — cleaning up DevTools tags...')
+    console.log('\n💮 Mizumi: Stopping watch — cleaning up DevTools tags...')
     findHTMLFiles(cwd).forEach(removeDevToolsTag)
     console.log('✅ Done.\n')
     process.exit(0)
@@ -129,7 +129,7 @@ export async function watch(loadConfig, Mizumi, generateDevToolsScript) {
     path.join(cwd, '**/*.mizu'),
   ]
 
-  console.log('🌊 Mizumi watching for changes...')
+  console.log('💮 Mizumi watching for changes...')
   console.log('   Watching: mizumi.config.js + **/*.mizu')
   console.log('   DevTools: active in watch mode (auto-removed on Ctrl+C)')
   console.log('   Press Ctrl+C to stop\n')

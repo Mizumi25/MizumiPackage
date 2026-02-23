@@ -374,7 +374,7 @@ export class AnimationEngine {
 
     const apply = propMap[base]
     if (apply) apply(value)
-    else console.warn('🌊 Mizumi: unknown prop class "' + base + '{' + value + '}"')
+    else console.warn('💮 Mizumi: unknown prop class "' + base + '{' + value + '}"')
   }
 
   // ============================================================
@@ -540,7 +540,7 @@ export class AnimationEngine {
   // ============================================================
   function initScrollStory(gsap, ScrollTrigger, el, base, props) {
     if (!ScrollTrigger) {
-      console.warn('🌊 Mizumi: ScrollTrigger not available for', base)
+      console.warn('💮 Mizumi: ScrollTrigger not available for', base)
       return
     }
 
@@ -611,7 +611,7 @@ export class AnimationEngine {
   // MAIN INIT
   // ============================================================
   function run(gsap, ScrollTrigger) {
-    console.log('🌊 Mizumi Animations Initializing...')
+    console.log('💮 Mizumi Animations Initializing...')
     if (ScrollTrigger) gsap.registerPlugin(ScrollTrigger)
 
     // Pass 1 — named config animations (plain class names, no {})

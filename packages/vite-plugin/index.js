@@ -11,6 +11,10 @@ function escapeCSSIdent(str) {
   return str.replace(/([^a-zA-Z0-9_\-])/g, '\\$1')
 }
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 const CLASS_RE     = /(?:className|class)\s*=\s*(?:"([^"]*?)"|'([^']*?)'|`([^`]*?)`|\{[^}]*?["'`]([^"'`]*?)["'`][^}]*?\})/g
 const MIZU_HELP_RE = /\bmizu\s*\(([^)]+)\)/g
 
@@ -95,7 +99,7 @@ async function buildMizumi(configPath, outputDir, root) {
       Object.keys(mizuConfig.animations).length > 0
     ) {
       config = mergeMizuConfigs(config, mizuConfig)
-      console.log('🌊 Mizumi: .mizu files merged')
+      console.log('💮 Mizumi: .mizu files merged')
     }
 
     const mz  = new Mizumi(config)
@@ -148,7 +152,7 @@ function mizumiPlugin(options = {}) {
         console.warn(`⚠️  Mizumi: ${configFile} not found, skipping...`)
         return
       }
-      console.log('🌊 Mizumi: Initial build...')
+      console.log('💮 Mizumi: Initial build...')
       await buildMizumi(configPath, path.resolve(root, outputDir), root)
     },
 
@@ -203,8 +207,155 @@ function mizumiPlugin(options = {}) {
             }
             lines[line - 1] = updated
             fs.writeFileSync(absFile, lines.join('\n'))
-            console.log(`🌊 Mizumi DevTools: wrote → ${path.relative(root, absFile)}:${line}`)
+            console.log(`💮 Mizumi DevTools: wrote → ${path.relative(root, absFile)}:${line}`)
             res.end(JSON.stringify({ ok: true }))
+          } catch (err) {
+            res.end(JSON.stringify({ ok: false, reason: err.message }))
+          }
+        })
+      })
+
+      // ── /__mizumi_write_config endpoint ──────────────────────────
+      // Patches a single key path inside mizumi.config.js using regex-based AST edit
+      server.middlewares.use('/__mizumi_write_config', async (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end(); return }
+        let body = ''
+        req.on('data', chunk => { body += chunk })
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const { keyPath, value } = JSON.parse(body)
+            // keyPath is dot-separated e.g. "depth.dimension.tiltStrength"
+            if (!keyPath || value === undefined) {
+              res.end(JSON.stringify({ ok: false, reason: 'missing keyPath or value' }))
+              return
+            }
+            if (!fs.existsSync(configPath)) {
+              res.end(JSON.stringify({ ok: false, reason: 'config not found' }))
+              return
+            }
+            let src = fs.readFileSync(configPath, 'utf8')
+            const parts = keyPath.split('.')
+            const leafKey = parts[parts.length - 1]
+            const valStr  = typeof value === 'string' ? `'${value}'` : String(value)
+
+            // Build a regex that finds `leafKey: <old_value>` in context
+            // Strategy: find the key followed by colon and a primitive value, replace it
+            // We use a regex that's scoped by looking for the key name
+            const keyRe = new RegExp(
+              `(\\b${escapeRegex(leafKey)}\\s*:\\s*)` +
+              `(true|false|-?[\\d.]+(?:e[+-]?[\\d]+)?|'[^']*'|"[^"]*")`,
+              'g'
+            )
+            let matched = false
+            const updated = src.replace(keyRe, (full, prefix) => {
+              matched = true
+              return prefix + valStr
+            })
+            if (!matched) {
+              res.end(JSON.stringify({ ok: false, reason: `key '${leafKey}' not found in config` }))
+              return
+            }
+            fs.writeFileSync(configPath, updated)
+            console.log(`💮 Mizumi DevTools: config patched → ${keyPath} = ${valStr}`)
+            res.end(JSON.stringify({ ok: true }))
+          } catch (err) {
+            res.end(JSON.stringify({ ok: false, reason: err.message }))
+          }
+        })
+      })
+
+      // ── /__mizumi_write_depth endpoint ───────────────────────────
+      // Patches depth/light config inside mizumi.config.js
+      server.middlewares.use('/__mizumi_write_depth', async (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end(); return }
+        let body = ''
+        req.on('data', chunk => { body += chunk })
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const changes = JSON.parse(body) // { strength: 0.6, 'light.intensity': 0.8, ... }
+            if (!fs.existsSync(configPath)) {
+              res.end(JSON.stringify({ ok: false, reason: 'config not found' }))
+              return
+            }
+            let src = fs.readFileSync(configPath, 'utf8')
+            let patchedCount = 0
+
+            for (const [keyPath, value] of Object.entries(changes)) {
+              const leafKey = keyPath.split('.').pop()
+              const valStr  = typeof value === 'string' ? `'${value}'` : String(value)
+              const keyRe   = new RegExp(
+                `(\\b${escapeRegex(leafKey)}\\s*:\\s*)` +
+                `(true|false|-?[\\d.]+(?:e[+-]?[\\d]+)?|'[^']*'|"[^"]*")`,
+                'g'
+              )
+              let patched = false
+              src = src.replace(keyRe, (full, prefix) => {
+                patched = true
+                return prefix + valStr
+              })
+              if (patched) patchedCount++
+            }
+
+            if (patchedCount === 0) {
+              res.end(JSON.stringify({ ok: false, reason: 'no matching keys found' }))
+              return
+            }
+            fs.writeFileSync(configPath, src)
+            console.log(`💮 Mizumi DevTools: depth config patched (${patchedCount} keys)`)
+            res.end(JSON.stringify({ ok: true, patched: patchedCount }))
+          } catch (err) {
+            res.end(JSON.stringify({ ok: false, reason: err.message }))
+          }
+        })
+      })
+
+      // ── /__mizumi_source_resolve endpoint ────────────────────────
+      // For non-React files: find the file+line for a given selector or data-source hint
+      server.middlewares.use('/__mizumi_source_resolve', async (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end(); return }
+        let body = ''
+        req.on('data', chunk => { body += chunk })
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const { tagName, id, classList, hint } = JSON.parse(body)
+            const exts   = ['jsx','tsx','js','ts','html','vue','svelte']
+            const srcDir = path.join(root, 'src')
+            const dirs   = [srcDir, root].filter(d => fs.existsSync(d))
+            const results = []
+
+            for (const dir of dirs) {
+              for (const file of walkDir(dir, exts)) {
+                if (file.includes('node_modules') || file.includes('.mizumi')) continue
+                try {
+                  const src   = fs.readFileSync(file, 'utf8')
+                  const lines = src.split('\n')
+                  for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i]
+                    // Match by id first (most specific)
+                    const idMatch = id && (
+                      new RegExp(`id\\s*=\\s*["'\`]${escapeRegex(id)}["'\`]`).test(line)
+                    )
+                    // Match by tag + one distinctive class
+                    const clsMatch = classList.length > 0 && classList.some(c =>
+                      line.includes(c)
+                    )
+                    if (idMatch || (clsMatch && line.toLowerCase().includes(tagName.toLowerCase()))) {
+                      results.push({ file: path.relative(root, file), line: i + 1, score: idMatch ? 10 : 1 })
+                    }
+                  }
+                } catch { /* skip */ }
+              }
+            }
+
+            results.sort((a, b) => b.score - a.score)
+            if (results.length > 0) {
+              res.end(JSON.stringify({ ok: true, file: results[0].file, line: results[0].line }))
+            } else {
+              res.end(JSON.stringify({ ok: false, reason: 'could not locate element in source' }))
+            }
           } catch (err) {
             res.end(JSON.stringify({ ok: false, reason: err.message }))
           }
@@ -218,7 +369,7 @@ function mizumiPlugin(options = {}) {
         if (isBuilding) return
         isBuilding = true
         try {
-          console.log('🌊 Mizumi: rebuilding...')
+          console.log('💮 Mizumi: rebuilding...')
           await buildMizumi(configPath, absOutputDir, root)
           server.ws.send({ type: 'full-reload', path: '*' })
         } finally {
@@ -249,7 +400,7 @@ function mizumiPlugin(options = {}) {
 
     async buildStart() {
       if (!configPath || !fs.existsSync(configPath)) return
-      console.log('🌊 Mizumi: Building for production...')
+      console.log('💮 Mizumi: Building for production...')
       await buildMizumi(configPath, path.resolve(root, outputDir), root)
     }
   }

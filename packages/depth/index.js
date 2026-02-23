@@ -478,7 +478,7 @@ export class DepthEngine {
     } else {
       setTimeout(scan, 100)
     }
-    console.log('🌊 Mizumi Depth ready')
+    console.log('💮 Mizumi Depth ready')
   }
 
   if (document.readyState === 'loading') {
@@ -768,7 +768,7 @@ export class DepthEngine {
         DIM[key] = value
         // Keys that need a full refresh (perspective requires parent style update)
         if (key === 'perspective' || key === 'tiltStrength') refreshAll()
-        console.log('🌊 MizumiDimension: ' + key + ' = ' + value)
+        console.log('💮 MizumiDimension: ' + key + ' = ' + value)
       }
     },
 
@@ -793,7 +793,7 @@ export class DepthEngine {
     } else {
       setTimeout(function() { scanDimension(); observeDimension() }, 100)
     }
-    console.log('🌊 Mizumi Dimension ready')
+    console.log('💮 Mizumi Dimension ready')
   }
 
   if (document.readyState === 'loading') {

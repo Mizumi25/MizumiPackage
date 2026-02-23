@@ -1,8 +1,24 @@
 {
   "name": "@mizumi25/depth",
   "version": "0.1.0",
-  "description": "Mizumi Depth Engine — 6th Layer",
+  "description": "Mizumi Depth Engine — 6th Layer of the Mizumi CSS framework",
   "type": "module",
   "main": "index.js",
-  "license": "MIT"
+  "keywords": [
+    "mizumi",
+    "depth",
+    "css",
+    "3d-ui",
+    "visual-engine",
+    "design-system"
+  ],
+  "author": "Mizumi Kaito / James Rafty Damasing Libago",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mizumi25/MizumiPackage"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

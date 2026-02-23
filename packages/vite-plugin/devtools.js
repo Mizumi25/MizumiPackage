@@ -51,23 +51,95 @@ export function generateDevToolsScript(meta) {
     return null
   }
 
-  function writeClassesToSource(el, newClasses) {
+  // ── RESOLVE SOURCE (with server fallback for non-React) ───
+  async function resolveSource(el) {
+    // 1. Try React fiber (fastest)
     const loc = getSourceLocation(el)
-    if (!loc) {
-      showToast('⚠ no source location — DOM only')
-      return
+    if (loc) return loc
+
+    // 2. Try data-source attribute
+    if (el.dataset && el.dataset.source) {
+      const parts = el.dataset.source.split(':')
+      return { file: parts[0], line: parseInt(parts[1]) || 1 }
     }
-    fetch('/__mizumi_write', {
+
+    // 3. Ask server to scan source files (Vue / Svelte / HTML)
+    try {
+      const classList = Array.from(el.classList).filter(c =>
+        c.includes(':') || c.includes('{')
+      ).slice(0, 3)
+
+      const r = await fetch('/__mizumi_source_resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tagName:   el.tagName.toLowerCase(),
+          id:        el.id || null,
+          classList: classList,
+        })
+      })
+      const data = await r.json()
+      if (data.ok) return { file: data.file, line: data.line }
+    } catch { /* server not available */ }
+
+    return null
+  }
+
+  function writeClassesToSource(el, newClasses) {
+    resolveSource(el).then(loc => {
+      if (!loc) {
+        showToast('⚠ no source location — DOM only')
+        return
+      }
+      fetch('/__mizumi_write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: loc.file, line: loc.line, newClasses })
+      })
+        .then(r => r.json())
+        .then(result => {
+          if (result.ok) showToast('✓ saved to source')
+          else showToast('⚠ ' + (result.reason || 'write failed'))
+        })
+        .catch(() => showToast('⚠ write failed'))
+    })
+  }
+
+  // ── WRITE SINGLE CONFIG KEY ───────────────────────────────
+  function writeConfig(keyPath, value) {
+    fetch('/__mizumi_write_config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: loc.file, line: loc.line, newClasses })
+      body: JSON.stringify({ keyPath, value })
     })
       .then(r => r.json())
       .then(result => {
-        if (result.ok) showToast('✓ saved to source')
-        else showToast('⚠ ' + (result.reason || 'write failed'))
+        if (result.ok) showToast(\`✓ config: \${keyPath.split('.').pop()} = \${value}\`)
+        else showToast('⚠ config: ' + (result.reason || 'write failed'))
       })
-      .catch(() => showToast('⚠ write failed'))
+      .catch(() => showToast('⚠ config write failed'))
+  }
+
+  // ── WRITE DEPTH/LIGHT BATCH ───────────────────────────────
+  let _depthFlushTimer = null
+  let _depthPending    = {}
+  function writeDepth(changes) {
+    Object.assign(_depthPending, changes)
+    clearTimeout(_depthFlushTimer)
+    _depthFlushTimer = setTimeout(() => {
+      const payload = { ..._depthPending }
+      _depthPending  = {}
+      fetch('/__mizumi_write_depth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(r => r.json())
+        .then(result => {
+          if (result.ok) showToast(\`✓ depth config saved (\${result.patched} keys)\`)
+        })
+        .catch(() => { /* silent — light is non-critical */ })
+    }, 600) // debounce 600ms so dragging knobs doesn't hammer disk
   }
 
   // ── STYLES ────────────────────────────────────────────────
@@ -1335,7 +1407,7 @@ export function generateDevToolsScript(meta) {
     // Toggle button
     const toggle = document.createElement('div')
     toggle.id = 'mz-devtools-toggle'
-    toggle.innerHTML = '🌊'
+    toggle.innerHTML = '💮'
     toggle.title = 'Mizumi DevTools'
     document.body.appendChild(toggle)
 
@@ -1369,7 +1441,7 @@ export function generateDevToolsScript(meta) {
       <div id="mz-panel-body"></div>
       <div id="mz-panel-footer">
         <span id="mz-copy-all-btn">copy all classes</span>
-        <span id="mz-mizumi-mark">MIZUMI 🌊</span>
+        <span id="mz-mizumi-mark">MIZUMI 💮</span>
       </div>
     \`
     document.body.appendChild(panel)
@@ -1742,6 +1814,8 @@ export function generateDevToolsScript(meta) {
           newVal = Math.max(min, Math.min(max, newVal))
           updateKnobVisual(newVal)
           if (window.MizumiDimension) window.MizumiDimension.setConfig(key, newVal)
+          // ── Write to config ──
+          writeConfig('depth.dimension.' + key, parseFloat(newVal.toFixed(4)))
         }
 
         svg.addEventListener('mousedown', e => {
@@ -1779,6 +1853,7 @@ export function generateDevToolsScript(meta) {
           const v = parseFloat(el.value)
           if (val) val.textContent = fmt(v)
           if (window.MizumiDimension) window.MizumiDimension.setConfig(key, v)
+          writeConfig('depth.dimension.' + key, parseFloat(v.toFixed(4)))
         })
       })
     }
@@ -1791,8 +1866,10 @@ export function generateDevToolsScript(meta) {
           const dim = window.MizumiDimension
           if (!dim) return
           const cur = dim.getConfig()[key]
-          dim.setConfig(key, !cur)
-          pill.classList.toggle('on', !cur)
+          const next = !cur
+          dim.setConfig(key, next)
+          pill.classList.toggle('on', next)
+          writeConfig('depth.dimension.' + key, next)
         })
       })
     }
@@ -1800,9 +1877,9 @@ export function generateDevToolsScript(meta) {
     // ── LIGHT HUD KNOB EVENTS ──────────────────────────────────
     function attachLightKnobEvents() {
       const lightKnobMap = {
-        'mz-lk-intensity': (v) => { if (window.MizumiDepth) window.MizumiDepth.setLightConfig?.({ intensity: v }) },
-        'mz-lk-ambient':   (v) => { if (window.MizumiDepth) window.MizumiDepth.setLightConfig?.({ ambient: v }) },
-        'mz-lk-strength':  (v) => { if (window.MizumiDepth) window.MizumiDepth.setStrength?.(v) },
+        'mz-lk-intensity': (v) => { if (window.MizumiDepth) window.MizumiDepth.setLightConfig?.({ intensity: v }); writeDepth({ 'light.intensity': parseFloat(v.toFixed(4)) }) },
+        'mz-lk-ambient':   (v) => { if (window.MizumiDepth) window.MizumiDepth.setLightConfig?.({ ambient:   v }); writeDepth({ 'light.ambient':   parseFloat(v.toFixed(4)) }) },
+        'mz-lk-strength':  (v) => { if (window.MizumiDepth) window.MizumiDepth.setStrength?.(v);                   writeDepth({ strength:          parseFloat(v.toFixed(4)) }) },
       }
       Object.entries(lightKnobMap).forEach(([id, setter]) => {
         const svg = document.getElementById(id)
@@ -1867,6 +1944,7 @@ export function generateDevToolsScript(meta) {
         const v = parseFloat(zEl.value)
         if (zVal) zVal.textContent = Math.round(v) + 'px'
         if (window.MizumiDepth) window.MizumiDepth.setTranslateZ?.(v)
+        writeDepth({ translateZ: Math.round(v) })
       })
 
       const pEl = document.getElementById('mz-lhs-persp')
@@ -1875,15 +1953,18 @@ export function generateDevToolsScript(meta) {
         const v = parseFloat(pEl.value)
         if (pVal) pVal.textContent = Math.round(v) + 'px'
         if (window.MizumiDepth) window.MizumiDepth.setPerspective?.(v)
+        writeDepth({ perspective: Math.round(v) })
       })
 
       lightHud.querySelectorAll('.mz-hud-pill[data-ltoggle]').forEach(pill => {
         pill.addEventListener('click', () => {
           const key = pill.dataset.ltoggle
           if (!window.MizumiDepth) return
-          const cur = window.MizumiDepth.getEffects?.()[key] ?? true
-          window.MizumiDepth.setEffect?.(key, !cur)
-          pill.classList.toggle('on', !cur)
+          const cur  = window.MizumiDepth.getEffects?.()[key] ?? true
+          const next = !cur
+          window.MizumiDepth.setEffect?.(key, next)
+          pill.classList.toggle('on', next)
+          writeDepth({ ['effects.' + key]: next })
         })
       })
     }
@@ -1982,7 +2063,7 @@ export function generateDevToolsScript(meta) {
     buildDOM()
   }
 
-  console.log('🌊 Mizumi DevTools ready — hover any element | Alt+M to toggle | Click to pin')
+  console.log('💮 Mizumi DevTools ready — hover any element | Alt+M to toggle | Click to pin')
 })()
 `
 }

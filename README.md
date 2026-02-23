@@ -1,4 +1,4 @@
-# 🌊 Mizumi
+# 💮 Mizumi
 
 **A designer-first CSS framework with GSAP animations, deep token system, and a Depth Engine — all driven by one config.**
 

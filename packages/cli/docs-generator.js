@@ -293,7 +293,7 @@ export class DocsGenerator {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mizumi Docs 🌊</title>
+  <title>Mizumi Docs 💮</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
@@ -819,7 +819,7 @@ export class DocsGenerator {
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-header">
-    <div class="sidebar-logo">Mizumi 🌊</div>
+    <div class="sidebar-logo">Mizumi 💮</div>
     <div class="sidebar-version">v0.1.0 — Auto-generated</div>
   </div>
 
