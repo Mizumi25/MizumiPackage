@@ -420,6 +420,85 @@ export function generateDevToolsScript(meta) {
       margin-left: 6px;
     }
 
+    /* ── Perspective Tab ── */
+    .mz-persp-row {
+      margin-bottom: 10px;
+    }
+    .mz-persp-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #7a7568;
+      margin-bottom: 4px;
+    }
+    .mz-persp-val {
+      color: #c9a96e;
+      font-variant-numeric: tabular-nums;
+      min-width: 40px;
+      text-align: right;
+    }
+    .mz-persp-slider {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 3px;
+      border-radius: 2px;
+      background: #2a2823;
+      outline: none;
+      cursor: pointer;
+    }
+    .mz-persp-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #c9a96e;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .mz-persp-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.3);
+    }
+    .mz-persp-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #7a7568;
+    }
+    .mz-toggle {
+      position: relative;
+      display: inline-block;
+      width: 28px;
+      height: 16px;
+      cursor: pointer;
+    }
+    .mz-toggle input { display: none; }
+    .mz-toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #2a2823;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .mz-toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #5a5650;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .mz-toggle input:checked + .mz-toggle-track {
+      background: rgba(201,169,110,0.2);
+    }
+    .mz-toggle input:checked + .mz-toggle-track::after {
+      transform: translateX(12px);
+      background: #c9a96e;
+    }
+
     #mz-panel-footer {
       padding: 8px 14px;
       border-top: 1px solid #2a2823;
@@ -470,25 +549,139 @@ export function generateDevToolsScript(meta) {
     #mz-sun:active { cursor: grabbing; }
     #mz-sun.visible { display: flex; }
 
-    #mz-perspective-panel {
+    /* ── DIMENSION HUD — replaces old persp-panel ── */
+    #mz-dim-hud {
       position: fixed;
-      bottom: 80px;
-      right: 70px;
-      width: 220px;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99998;
       background: #0e0d0b;
       border: 1px solid #2a2823;
-      border-radius: 8px;
-      padding: 14px;
-      z-index: 99998;
+      border-radius: 14px;
+      padding: 10px 16px 12px;
       font-family: ui-monospace, monospace;
       font-size: 10px;
       color: #7a7568;
       display: none;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
+      min-width: 340px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      user-select: none;
     }
-    #mz-perspective-panel.visible { display: flex; }
+    #mz-dim-hud.visible { display: flex; }
 
+    #mz-dim-hud-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #c9a96e;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    #mz-dim-hud-title span { color: #3d3a34; font-size: 9px; }
+
+    #mz-dim-hud-knobs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .mz-knob-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .mz-knob-label {
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #3d3a34;
+    }
+    .mz-knob-val {
+      font-size: 10px;
+      color: #c9a96e;
+      font-variant-numeric: tabular-nums;
+      min-width: 34px;
+      text-align: center;
+    }
+
+    /* SVG knob — rotary dial */
+    .mz-knob {
+      width: 44px;
+      height: 44px;
+      cursor: ns-resize;
+      touch-action: none;
+    }
+    .mz-knob .track   { fill: none; stroke: #2a2823; stroke-width: 4; }
+    .mz-knob .fill    { fill: none; stroke: #c9a96e; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.05s; }
+    .mz-knob .dot     { fill: #c9a96e; }
+    .mz-knob .bg      { fill: #151412; }
+
+    #mz-dim-hud-row2 {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    #mz-dim-hud-row2 .mz-hud-slider-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .mz-hud-slider-label {
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #3d3a34;
+      display: flex;
+      justify-content: space-between;
+    }
+    .mz-hud-slider-label span { color: #c9a96e; }
+    .mz-hud-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 2px;
+      background: #2a2823;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .mz-hud-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #c9a96e;
+      cursor: pointer;
+    }
+
+    #mz-dim-hud-toggles {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .mz-hud-pill {
+      font-size: 8px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid #2a2823;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.08em;
+      color: #5a5650;
+    }
+    .mz-hud-pill.on {
+      border-color: rgba(201,169,110,0.4);
+      color: #c9a96e;
+      background: rgba(201,169,110,0.06);
+    }
+
+    /* ── old persp CSS kept for .mz-persp-label on tab ── */
     .mz-persp-label {
       font-size: 9px;
       letter-spacing: 0.15em;
@@ -496,13 +689,11 @@ export function generateDevToolsScript(meta) {
       color: #3d3a34;
       margin-bottom: 4px;
     }
-
     .mz-persp-value {
       color: #c9a96e;
       font-size: 10px;
       margin-left: 6px;
     }
-
     .mz-persp-slider {
       -webkit-appearance: none;
       width: 100%;
@@ -521,7 +712,7 @@ export function generateDevToolsScript(meta) {
       cursor: pointer;
     }
 
-    #mz-sun-btn, #mz-persp-btn {
+    #mz-sun-btn {
       position: fixed;
       z-index: 99999;
       width: 36px;
@@ -537,11 +728,11 @@ export function generateDevToolsScript(meta) {
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
       transition: all 0.15s;
       user-select: none;
+      bottom: 70px;
+      right: 20px;
     }
-    #mz-sun-btn  { bottom: 70px; right: 20px; }
-    #mz-persp-btn { bottom: 112px; right: 20px; }
-    #mz-sun-btn:hover, #mz-persp-btn:hover { border-color: #c9a96e; transform: scale(1.1); }
-    #mz-sun-btn.active, #mz-persp-btn.active { border-color: #c9a96e; box-shadow: 0 0 0 2px rgba(201,169,110,0.3); }
+    #mz-sun-btn:hover { border-color: #c9a96e; transform: scale(1.1); }
+    #mz-sun-btn.active { border-color: #c9a96e; box-shadow: 0 0 0 2px rgba(201,169,110,0.3); }
 
     #mz-light-crosshair {
       position: fixed;
@@ -620,6 +811,9 @@ export function generateDevToolsScript(meta) {
     } else if (tab === 'add') {
       body.innerHTML = renderAddTab()
       attachAddTabEvents()
+    } else if (tab === 'perspective') {
+      body.innerHTML = renderPerspectiveTab()
+      attachPerspectiveTabEvents()
     }
   }
 
@@ -922,6 +1116,112 @@ export function generateDevToolsScript(meta) {
   }
 
   // ── TAB SWITCHING ─────────────────────────────────────────
+  // ── PERSPECTIVE TAB ──────────────────────────────────────────
+  // Quick-add panel + HUD launcher. Main controls are in the floating HUD (Alt+D)
+  function renderPerspectiveTab() {
+    const dim = window.MizumiDimension ? window.MizumiDimension.getConfig() : null
+    const targetIsDim    = target && target.classList.contains('dimension')
+    const targetIsScrub  = target && target.classList.contains('dimension-scrub')
+    const targetIsScroll = target && target.classList.contains('dimension-scroll')
+
+    if (!dim) {
+      return \`<div class="mz-empty" style="padding:16px;line-height:1.6;">
+        <strong style="color:#c9a96e;">MizumiDimension not loaded</strong><br>
+        <span style="color:#5a5650;font-size:11px;">Add <code style="color:#c9a96e;">mizumi-depth-runtime.js</code> to your page.</span>
+      </div>\`
+    }
+
+    const statusColor = targetIsDim ? '#4ade80' : targetIsScrub ? '#38bdf8' : targetIsScroll ? '#a78bfa' : '#3d3a34'
+    const statusText  = targetIsDim ? '● .dimension' : targetIsScrub ? '● .dimension-scrub' : targetIsScroll ? '● .dimension-scroll' : '○ no dimension class'
+
+    return \`
+      <div style="padding: 12px;">
+        <div style="background:#151412;border:1px solid #2a2823;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+          <div style="font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:#3d3a34;margin-bottom:6px;">
+            Selected Element
+            <span style="float:right;color:\${statusColor}">\${statusText}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <button class="mz-action-btn" id="mz-p-add-dim"    style="flex:1;padding:5px 0;font-size:9px;">+ .dimension</button>
+            <button class="mz-action-btn" id="mz-p-add-scrub"  style="flex:1;padding:5px 0;font-size:9px;">+ .dimension-scrub</button>
+            <button class="mz-action-btn" id="mz-p-add-scroll" style="flex:1;padding:5px 0;font-size:9px;">+ .dimension-scroll</button>
+          </div>
+          <div style="margin-top:6px;">
+            <button class="mz-action-btn" id="mz-p-remove-dim" style="width:100%;padding:5px 0;font-size:9px;color:#ef4444;border-color:rgba(239,68,68,0.2);">
+              remove all dimension classes
+            </button>
+          </div>
+        </div>
+
+        <div style="background:#151412;border:1px solid #2a2823;border-radius:8px;padding:10px 12px;margin-bottom:10px;cursor:pointer;" id="mz-p-open-hud">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:10px;color:#c9a96e;">⬡ Open Dimension HUD</span>
+            <span style="font-size:9px;color:#3d3a34;">Alt+D</span>
+          </div>
+          <div style="font-size:9px;color:#5a5650;margin-top:4px;line-height:1.5;">
+            Rotary knobs for tilt, depth, speed, zoom.<br>Live-updates all .dimension elements.
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div class="mz-section-label" style="margin:0;">Config snippet</div>
+            <span id="mz-p-copy" style="cursor:pointer;color:#c9a96e;font-size:10px;">copy</span>
+          </div>
+          <pre id="mz-p-snippet" style="font-size:9px;color:#8a8070;background:#0e0d0b;border-radius:6px;padding:8px;overflow:auto;margin:0;line-height:1.5;white-space:pre-wrap;"></pre>
+        </div>
+      </div>
+    \`
+  }
+
+  function attachPerspectiveTabEvents() {
+    const dim = window.MizumiDimension
+    if (!dim) return
+
+    document.getElementById('mz-p-open-hud')?.addEventListener('click', () => {
+      const hud = document.getElementById('mz-dim-hud')
+      if (hud) hud.classList.add('visible')
+    })
+    document.getElementById('mz-p-add-dim')?.addEventListener('click', () => {
+      if (target) { target.classList.add('dimension'); dim.refresh(); showToast('✓ .dimension added'); renderPanel() }
+    })
+    document.getElementById('mz-p-add-scrub')?.addEventListener('click', () => {
+      if (target) { target.classList.add('dimension-scrub'); dim.refresh(); showToast('✓ .dimension-scrub added') }
+    })
+    document.getElementById('mz-p-add-scroll')?.addEventListener('click', () => {
+      if (target) { target.classList.add('dimension-scroll'); dim.refresh(); showToast('✓ .dimension-scroll added') }
+    })
+    document.getElementById('mz-p-remove-dim')?.addEventListener('click', () => {
+      if (target) {
+        target.classList.remove('dimension','dimension-scrub','dimension-scroll')
+        dim.reset(target)
+        showToast('removed')
+        renderPanel()
+      }
+    })
+    document.getElementById('mz-p-copy')?.addEventListener('click', () => {
+      const s = document.getElementById('mz-p-snippet')?.textContent || ''
+      navigator.clipboard?.writeText(s).then(() => showToast('✓ copied'))
+    })
+
+    const cfg = dim.getConfig()
+    const s   = document.getElementById('mz-p-snippet')
+    if (s) s.textContent = \`depth: {
+  dimension: {
+    tiltStrength:   \${cfg.tiltStrength},
+    perspective:    \${cfg.perspective},
+    duration:       \${cfg.duration},
+    scrollZoom:     \${cfg.scrollZoom},
+    scrollScale:    \${cfg.scrollScale},
+    shine:          \${cfg.shine},
+    shineOpacity:   \${cfg.shineOpacity},
+    parallaxLayers: \${cfg.parallaxLayers},
+    parallaxDepth:  \${cfg.parallaxDepth},
+    resetOnLeave:   \${cfg.resetOnLeave},
+  }
+}\`
+  }
+
   function setActiveTab(name) {
     tab = name
     document.querySelectorAll('.mz-tab').forEach(t => {
@@ -1001,6 +1301,7 @@ export function generateDevToolsScript(meta) {
         <div class="mz-tab active" data-tab="classes">Classes</div>
         <div class="mz-tab" data-tab="computed">Computed</div>
         <div class="mz-tab" data-tab="add">+ Add</div>
+        <div class="mz-tab" data-tab="perspective">⬡ 3D</div>
       </div>
       <div id="mz-panel-body"></div>
       <div id="mz-panel-footer">
@@ -1148,41 +1449,247 @@ export function generateDevToolsScript(meta) {
     sunBtn.innerHTML = '☀'
     document.body.appendChild(sunBtn)
 
-    // ── PERSPECTIVE BUTTON ──
-    const perspBtn = document.createElement('div')
-    perspBtn.id    = 'mz-persp-btn'
-    perspBtn.title = 'Perspective Control'
-    perspBtn.innerHTML = '⟁'
-    document.body.appendChild(perspBtn)
-
     // ── SUN CIRCLE ──
     const sun = document.createElement('div')
     sun.id    = 'mz-sun'
     sun.textContent = 'SUN'
     document.body.appendChild(sun)
 
-    // ── PERSPECTIVE PANEL ──
-    const perspPanel = document.createElement('div')
-    perspPanel.id = 'mz-perspective-panel'
-    perspPanel.innerHTML = \`
-      <div style="color:#c9a96e;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;">Perspective</div>
+    // ── DIMENSION HUD ──────────────────────────────────────────
+    // Floating bottom-center pod for live Dimension control
+    // Replaces the old ⟁ perspective button + panel
+    const dimHud = document.createElement('div')
+    dimHud.id = 'mz-dim-hud'
 
-      <div>
-        <div class="mz-persp-label">Distance <span class="mz-persp-value" id="mz-persp-dist-val">1000px</span></div>
-        <input class="mz-persp-slider" id="mz-persp-dist" type="range" min="200" max="3000" value="1000" step="50">
-      </div>
+    // Helper: build one SVG rotary knob
+    function makeKnob(id, label, value, min, max, unit) {
+      // Arc params — 220° sweep starting from bottom-left
+      const R = 16, cx = 22, cy = 22
+      const startAngle = 130, sweepAngle = 280
+      const startRad = (startAngle - 90) * Math.PI / 180
+      const normalize = v => Math.max(0, Math.min(1, (v - min) / (max - min)))
 
-      <div>
-        <div class="mz-persp-label">Horizontal Origin <span class="mz-persp-value" id="mz-persp-x-val">50%</span></div>
-        <input class="mz-persp-slider" id="mz-persp-x" type="range" min="0" max="100" value="50" step="1">
-      </div>
+      function arcPath(fraction) {
+        const angle = startAngle + fraction * sweepAngle
+        const rad   = (angle - 90) * Math.PI / 180
+        const ex    = cx + R * Math.cos(rad)
+        const ey    = cy + R * Math.sin(rad)
+        const large = fraction * sweepAngle > 180 ? 1 : 0
+        const sx    = cx + R * Math.cos(startRad)
+        const sy    = cy + R * Math.sin(startRad)
+        return \`M \${sx.toFixed(2)} \${sy.toFixed(2)} A \${R} \${R} 0 \${large} 1 \${ex.toFixed(2)} \${ey.toFixed(2)}\`
+      }
 
-      <div>
-        <div class="mz-persp-label">Vertical Origin <span class="mz-persp-value" id="mz-persp-y-val">30%</span></div>
-        <input class="mz-persp-slider" id="mz-persp-y" type="range" min="0" max="100" value="30" step="1">
-      </div>
-    \`
-    document.body.appendChild(perspPanel)
+      function dotPos(fraction) {
+        const angle = startAngle + fraction * sweepAngle
+        const rad   = (angle - 90) * Math.PI / 180
+        return {
+          x: (cx + (R - 0.5) * Math.cos(rad)).toFixed(2),
+          y: (cy + (R - 0.5) * Math.sin(rad)).toFixed(2)
+        }
+      }
+
+      const norm    = normalize(value)
+      const path    = arcPath(norm)
+      const dot     = dotPos(norm)
+      const trackP  = arcPath(1)
+      const display = Number.isInteger(value) ? value : value.toFixed(2)
+
+      return \`<div class="mz-knob-col">
+        <div class="mz-knob-label">\${label}</div>
+        <svg class="mz-knob" id="\${id}" viewBox="0 0 44 44"
+             data-min="\${min}" data-max="\${max}" data-val="\${value}" data-unit="\${unit}">
+          <circle class="bg" cx="22" cy="22" r="20"/>
+          <path class="track" d="\${trackP}"/>
+          <path class="fill" id="\${id}-fill" d="\${path}"/>
+          <circle class="dot" id="\${id}-dot" cx="\${dot.x}" cy="\${dot.y}" r="2.5"/>
+        </svg>
+        <div class="mz-knob-val" id="\${id}-val">\${display}\${unit}</div>
+      </div>\`
+    }
+
+    // Get initial dim config values
+    function getDim() {
+      return window.MizumiDimension ? window.MizumiDimension.getConfig() : {
+        tiltStrength: 15, perspective: 800, duration: 0.4,
+        scrollZoom: 20, scrollScale: 1.06, shine: true,
+        parallaxLayers: true, shineOpacity: 0.15, parallaxDepth: 20, resetOnLeave: true
+      }
+    }
+
+    function buildHud() {
+      const d = getDim()
+      dimHud.innerHTML = \`
+        <div id="mz-dim-hud-title">
+          ⬡ DIMENSION
+          <span>drag knobs up/down to adjust</span>
+        </div>
+        <div id="mz-dim-hud-knobs">
+          \${makeKnob('mz-dk-tilt',    'Tilt',      d.tiltStrength,  0,   45,   '°')}
+          \${makeKnob('mz-dk-restx',   'Rest X',    d.restingX !== undefined ? d.restingX : -8, -45, 45, '°')}
+          \${makeKnob('mz-dk-resty',   'Rest Y',    d.restingY !== undefined ? d.restingY :  6, -45, 45, '°')}
+          \${makeKnob('mz-dk-dur',     'Speed',     d.duration,      0.05,1.5,  's')}
+        </div>
+        <div id="mz-dim-hud-row2">
+          <div class="mz-hud-slider-group">
+            <div class="mz-hud-slider-label">Scroll Scale <span id="mz-dhs-scale-val">\${d.scrollScale.toFixed(2)}x</span></div>
+            <input class="mz-hud-slider" id="mz-dhs-scale" type="range" min="1" max="1.3" step="0.01" value="\${d.scrollScale}">
+          </div>
+          <div class="mz-hud-slider-group">
+            <div class="mz-hud-slider-label">Layer Depth <span id="mz-dhs-pdepth-val">\${d.parallaxDepth}px</span></div>
+            <input class="mz-hud-slider" id="mz-dhs-pdepth" type="range" min="0" max="80" step="1" value="\${d.parallaxDepth}">
+          </div>
+          <div class="mz-hud-slider-group">
+            <div class="mz-hud-slider-label">Shine <span id="mz-dhs-shine-val">\${d.shineOpacity.toFixed(2)}</span></div>
+            <input class="mz-hud-slider" id="mz-dhs-shine" type="range" min="0" max="0.5" step="0.01" value="\${d.shineOpacity}">
+          </div>
+        </div>
+        <div id="mz-dim-hud-toggles">
+          <div class="mz-hud-pill \${d.shine          ? 'on' : ''}" data-toggle="shine">✦ Shine</div>
+          <div class="mz-hud-pill \${d.parallaxLayers ? 'on' : ''}" data-toggle="parallaxLayers">⊕ Layers</div>
+          <div class="mz-hud-pill \${d.resetOnLeave   ? 'on' : ''}" data-toggle="resetOnLeave">↺ Reset</div>
+        </div>
+      \`
+    }
+
+    buildHud()
+    document.body.appendChild(dimHud)
+
+    // ── KNOB DRAG LOGIC ────────────────────────────────────────
+    // Drag up = increase, drag down = decrease (like Figma/Spline)
+    function attachKnobEvents() {
+      const knobMap = {
+        'mz-dk-tilt':  'tiltStrength',
+        'mz-dk-restx': 'restingX',
+        'mz-dk-resty': 'restingY',
+        'mz-dk-dur':   'duration',
+      }
+
+      Object.entries(knobMap).forEach(([id, key]) => {
+        const svg   = document.getElementById(id)
+        if (!svg) return
+
+        let dragging = false
+        let startY   = 0
+        let startVal = 0
+
+        const min  = parseFloat(svg.dataset.min)
+        const max  = parseFloat(svg.dataset.max)
+        const unit = svg.dataset.unit
+        const R    = 16, cx = 22, cy = 22
+        const startAngle = 130, sweepAngle = 280
+
+        function updateKnobVisual(val) {
+          const norm = Math.max(0, Math.min(1, (val - min) / (max - min)))
+          const startRad = (startAngle - 90) * Math.PI / 180
+
+          function arcPath(fraction) {
+            const angle = startAngle + fraction * sweepAngle
+            const rad   = (angle - 90) * Math.PI / 180
+            const ex    = cx + R * Math.cos(rad)
+            const ey    = cy + R * Math.sin(rad)
+            const large = fraction * sweepAngle > 180 ? 1 : 0
+            const sx    = cx + R * Math.cos(startRad)
+            const sy    = cy + R * Math.sin(startRad)
+            return \`M \${sx.toFixed(2)} \${sy.toFixed(2)} A \${R} \${R} 0 \${large} 1 \${ex.toFixed(2)} \${ey.toFixed(2)}\`
+          }
+
+          const fill = document.getElementById(id + '-fill')
+          const dot  = document.getElementById(id + '-dot')
+          if (fill) fill.setAttribute('d', arcPath(norm))
+          if (dot) {
+            const angle = startAngle + norm * sweepAngle
+            const rad   = (angle - 90) * Math.PI / 180
+            dot.setAttribute('cx', (cx + (R - 0.5) * Math.cos(rad)).toFixed(2))
+            dot.setAttribute('cy', (cy + (R - 0.5) * Math.sin(rad)).toFixed(2))
+          }
+
+          const valEl = document.getElementById(id + '-val')
+          if (valEl) {
+            const display = (unit === 'px' || unit === '°') ? Math.round(val) : val.toFixed(2)
+            valEl.textContent = display + unit
+          }
+
+          svg.dataset.val = val
+        }
+
+        function onMove(clientY) {
+          const dy     = startY - clientY       // up = positive
+          const range  = max - min
+          const speed  = range / 200             // 200px drag = full range
+          let   newVal = startVal + dy * speed
+          newVal = Math.round(newVal / parseFloat(svg.getAttribute('step') || 1)) * parseFloat(svg.getAttribute('step') || 1)
+          newVal = Math.max(min, Math.min(max, newVal))
+          updateKnobVisual(newVal)
+          if (window.MizumiDimension) window.MizumiDimension.setConfig(key, newVal)
+        }
+
+        svg.addEventListener('mousedown', e => {
+          dragging = true
+          startY   = e.clientY
+          startVal = parseFloat(svg.dataset.val)
+          e.preventDefault()
+        })
+        svg.addEventListener('touchstart', e => {
+          dragging = true
+          startY   = e.touches[0].clientY
+          startVal = parseFloat(svg.dataset.val)
+          e.preventDefault()
+        }, { passive: false })
+
+        document.addEventListener('mousemove', e => { if (dragging) onMove(e.clientY) })
+        document.addEventListener('touchmove', e => { if (dragging) onMove(e.touches[0].clientY) }, { passive: false })
+        document.addEventListener('mouseup',  () => { dragging = false })
+        document.addEventListener('touchend', () => { dragging = false })
+      })
+    }
+
+    // ── HUD SLIDER EVENTS ──────────────────────────────────────
+    function attachHudSliderEvents() {
+      const sliders = {
+        'mz-dhs-scale':  { key: 'scrollScale',   valId: 'mz-dhs-scale-val',  fmt: v => v.toFixed(2) + 'x' },
+        'mz-dhs-pdepth': { key: 'parallaxDepth', valId: 'mz-dhs-pdepth-val', fmt: v => Math.round(v) + 'px' },
+        'mz-dhs-shine':  { key: 'shineOpacity',  valId: 'mz-dhs-shine-val',  fmt: v => v.toFixed(2) },
+      }
+      Object.entries(sliders).forEach(([id, { key, valId, fmt }]) => {
+        const el  = document.getElementById(id)
+        const val = document.getElementById(valId)
+        if (!el) return
+        el.addEventListener('input', () => {
+          const v = parseFloat(el.value)
+          if (val) val.textContent = fmt(v)
+          if (window.MizumiDimension) window.MizumiDimension.setConfig(key, v)
+        })
+      })
+    }
+
+    // ── HUD TOGGLE PILLS ──────────────────────────────────────
+    function attachHudToggleEvents() {
+      dimHud.querySelectorAll('.mz-hud-pill[data-toggle]').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const key = pill.dataset.toggle
+          const dim = window.MizumiDimension
+          if (!dim) return
+          const cur = dim.getConfig()[key]
+          dim.setConfig(key, !cur)
+          pill.classList.toggle('on', !cur)
+        })
+      })
+    }
+
+    // Init HUD events once DOM is in place
+    setTimeout(() => {
+      attachKnobEvents()
+      attachHudSliderEvents()
+      attachHudToggleEvents()
+    }, 0)
+
+    // ── TOGGLE HUD via Alt+D ───────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.altKey && e.key === 'd') {
+        dimHud.classList.toggle('visible')
+      }
+    })
 
     // ── SUN DRAG LOGIC ──
     let sunActive    = false
@@ -1250,35 +1757,7 @@ export function generateDevToolsScript(meta) {
     document.addEventListener('mouseup',  function() { sunDragging = false })
     document.addEventListener('touchend', function() { sunDragging = false })
 
-    // ── PERSPECTIVE PANEL LOGIC ──
-    let perspActive = false
-
-    perspBtn.addEventListener('click', () => {
-      perspActive = !perspActive
-      perspBtn.classList.toggle('active', perspActive)
-      perspPanel.classList.toggle('visible', perspActive)
-    })
-
-    document.getElementById('mz-persp-dist').addEventListener('input', function(e) {
-      document.getElementById('mz-persp-dist-val').textContent = e.target.value + 'px'
-      document.documentElement.style.setProperty('--mz-perspective', e.target.value + 'px')
-    })
-
-    document.getElementById('mz-persp-x').addEventListener('input', function(e) {
-      var y = document.getElementById('mz-persp-y').value
-      var origin = e.target.value + '% ' + y + '%'
-      document.getElementById('mz-persp-x-val').textContent = e.target.value + '%'
-      document.documentElement.style.setProperty('--mz-perspective-origin', origin)
-      if (window.MizumiDepth) window.MizumiDepth.setPerspectiveOrigin(origin)
-    })
-
-    document.getElementById('mz-persp-y').addEventListener('input', function(e) {
-      var x = document.getElementById('mz-persp-x').value
-      var origin = x + '% ' + e.target.value + '%'
-      document.getElementById('mz-persp-y-val').textContent = e.target.value + '%'
-      document.documentElement.style.setProperty('--mz-perspective-origin', origin)
-      if (window.MizumiDepth) window.MizumiDepth.setPerspectiveOrigin(origin)
-    })
+    // ── PERSPECTIVE PANEL LOGIC — removed, replaced by Dimension HUD ──
   }
 
   // ── INIT ─────────────────────────────────────────────────

@@ -33,7 +33,96 @@ export class DepthEngine {
         200: 4,
         999: 5,
       },
+
+      // ── DIMENSION — 2.5D Spline-style tilt + perspective zoom ──
+      dimension: {
+        // How many degrees the element tilts toward the cursor (max tilt)
+        tiltStrength:    config.dimension?.tiltStrength    ?? 15,
+        // CSS perspective value for the tilt container (lower = more dramatic)
+        perspective:     config.dimension?.perspective     ?? 800,
+        // Scroll zoom: how much rotateX is applied as element scrolls in (degrees)
+        scrollZoom:      config.dimension?.scrollZoom      ?? 20,
+        // Scale on zoom-in (1.05 = 5% bigger at full scroll-in)
+        scrollScale:     config.dimension?.scrollScale     ?? 1.06,
+        // GSAP ease for tilt animation
+        ease:            config.dimension?.ease            ?? 'power2.out',
+        // Duration of tilt lerp in seconds
+        duration:        config.dimension?.duration        ?? 0.4,
+        // Whether mouse leave resets to flat
+        resetOnLeave:    config.dimension?.resetOnLeave    ?? true,
+        // Shine/glare overlay on tilt (like a physical card catching light)
+        shine:           config.dimension?.shine           ?? true,
+        shineOpacity:    config.dimension?.shineOpacity    ?? 0.15,
+        // Floating parallax layers inside element (children with dimension-layer class)
+        parallaxLayers:  config.dimension?.parallaxLayers  ?? true,
+        parallaxDepth:   config.dimension?.parallaxDepth   ?? 20,
+      },
     }
+  }
+
+  // ── DIMENSION CSS ─────────────────────────────────────────────
+  // Generates static CSS for .dimension and .dimension-layer classes
+  generateDimensionCSS() {
+    const d = this.config.dimension
+    return `
+/* ===== MIZUMI DIMENSION — 2.5D Persistent Tilt ===== */
+
+/* Parent wrapper — gives perspective context per-element, not on html */
+.dimension-scene {
+  perspective: ${d.perspective}px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+}
+
+/* The tiltable element — always has a tilt, never flat by default */
+.dimension {
+  transform-style: preserve-3d;
+  /* Initial transform set by JS runtime to resting tilt */
+  will-change: transform;
+  position: relative;
+}
+
+/* Shine overlay */
+.dimension-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  mix-blend-mode: screen;
+  transition: opacity 0.3s ease;
+}
+
+/* Parallax child layers */
+.dimension-layer {
+  transition: transform ${d.duration}s ${d.ease};
+  will-change: transform;
+}
+.dimension-layer[data-depth="1"] { --mz-dim-layer-depth: 10px; }
+.dimension-layer[data-depth="2"] { --mz-dim-layer-depth: 25px; }
+.dimension-layer[data-depth="3"] { --mz-dim-layer-depth: 45px; }
+.dimension-layer[data-depth="4"] { --mz-dim-layer-depth: 70px; }
+.dimension-layer[data-depth="5"] { --mz-dim-layer-depth: 100px; }
+
+/* Scroll-driven — starts tilted, flattens on scroll into view */
+.dimension-scroll {
+  transform-style: preserve-3d;
+  transform: rotateX(${d.scrollZoom}deg) scale(${1 / d.scrollScale});
+  opacity: 0.4;
+  transition: transform 0.8s cubic-bezier(0.4,0,0.2,1), opacity 0.6s ease;
+  will-change: transform, opacity;
+}
+.dimension-scroll.is-visible {
+  transform: rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+/* Opt out of mouse tracking (tilt still applied, just static) */
+.dimension-static {
+  pointer-events: none;
+}
+`
   }
 
   getDepth(zIndex) {
@@ -161,7 +250,9 @@ export class DepthEngine {
   }
 
   generateRuntimeScript() {
-    const cfg = JSON.stringify(this.config, null, 2)
+    // Serialize BOTH configs here in JS scope where `this` is valid
+    const cfg    = JSON.stringify(this.config, null, 2)
+    const dimCfg = JSON.stringify(this.config.dimension, null, 2)
 
     return `
 ;(function MizumiDepth() {
@@ -186,7 +277,6 @@ export class DepthEngine {
     return loDepth + t * (hiDepth - loDepth)
   }
 
-  // Returns [r,g,b] of computed background, or null if transparent/no paint
   function getBgRGB(el) {
     var bg = window.getComputedStyle(el).backgroundColor
     var m  = bg.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/)
@@ -204,7 +294,6 @@ export class DepthEngine {
     var fx   = CFG.effects
     var maxZ = CFG.translateZ
 
-    // Light proximity — drives shadow size and fuzziness
     var lightDist    = Math.sqrt(lx * lx + ly * ly)
     var proximity    = Math.max(0, 1 - lightDist * 0.5)
 
@@ -221,26 +310,20 @@ export class DepthEngine {
     var backdropBlur = depth < 0.15 ? (0.15 - depth) * 3 * s : 0
     var tz           = depth * maxZ
 
-    // Rim light — inset on light-facing side
     var rimX         = lx * shadowDist * 0.4
     var rimY         = ly * shadowDist * 0.4
     var rimBlur      = 4 + depth * 8
     var rimAlpha     = depth * li * 0.18 * s
 
-    // Inner gradient
     var gradAngleDeg = Math.round(Math.atan2(lx, -ly) * (180 / Math.PI))
     var gradStrength = depth * li * 0.06 * s
 
-    // Detect transparent / no paint
     var rgb           = getBgRGB(el)
     var isTransparent = !rgb
 
-    // ── SHADOW + RIM ─────────────────────────────────────────
     if (fx.shadow && shadowAlpha > 0.005) {
       var dropShadow, rimShadow
-
       if (isTransparent) {
-        // No paint: white directional glow + centered bloom
         dropShadow = shadowX.toFixed(1) + 'px ' + shadowY.toFixed(1) + 'px ' +
                      shadowBlur.toFixed(1) + 'px ' + shadowSpread.toFixed(1) +
                      'px rgba(255,255,255,' + (shadowAlpha * 0.6).toFixed(3) + ')'
@@ -248,20 +331,15 @@ export class DepthEngine {
         rimShadow = '0px 0px ' + (depth * 20 * s).toFixed(1) + 'px ' +
                     (depth * 6 * s).toFixed(1) + 'px rgba(255,255,255,' + bloomAlpha + ')'
       } else {
-        // Painted: dark drop shadow + inset rim highlight
         dropShadow = shadowX.toFixed(1) + 'px ' + shadowY.toFixed(1) + 'px ' +
                      shadowBlur.toFixed(1) + 'px ' + shadowSpread.toFixed(1) +
                      'px rgba(0,0,0,' + shadowAlpha.toFixed(3) + ')'
         rimShadow = 'inset ' + rimX.toFixed(1) + 'px ' + rimY.toFixed(1) + 'px ' +
                     rimBlur.toFixed(1) + 'px 0px rgba(255,255,255,' + rimAlpha.toFixed(3) + ')'
       }
-
       el.style.setProperty('--mz-depth-shadow', dropShadow + ', ' + rimShadow)
     }
 
-    // -- INNER GRADIENT (white lit-side inset only, safe on any background) --
-    // Only a soft white inset on the light-facing side. No dark inset —
-    // darkening destroys light/white backgrounds turning them grey.
     if (fx.gradient && !isTransparent && gradStrength > 0.003) {
       var insetSize = (80 + depth * 60).toFixed(0)
       var litAlpha  = (gradStrength * 1.5).toFixed(3)
@@ -271,7 +349,6 @@ export class DepthEngine {
       if (cur) el.style.setProperty('--mz-depth-shadow', cur + ', ' + litInset)
     }
 
-    // ── FILTER ───────────────────────────────────────────────
     var lightFacing = Math.max(0, (-lx * 0.5 + -ly * 0.5))
     var lightBoost  = lightFacing * depth * li * 0.06 * s
     var finalBright = brightness + lightBoost
@@ -408,6 +485,321 @@ export class DepthEngine {
     document.addEventListener('DOMContentLoaded', init)
   } else {
     init()
+  }
+})()
+
+// ================================================================
+// MIZUMI DIMENSION RUNTIME — 2.5D Spline-style tilt engine
+//
+// CONCEPT: .dimension elements have a PERSISTENT tilt state.
+// They are not hover-only. The tilt is always visible — like a
+// card sitting at an angle on a table. Mouse movement SHIFTS
+// that angle (like looking at the card from different positions).
+// The panel/config controls the default resting tilt.
+// ================================================================
+;(function MizumiDimension() {
+  if (window.__MIZUMI_DIMENSION__) return
+  window.__MIZUMI_DIMENSION__ = true
+
+  // DIM is serialized in generateRuntimeScript() where "this" is the DepthEngine instance
+  var DIM = ${dimCfg}
+
+  // ── RESTING TILT ─────────────────────────────────────────────
+  // Every .dimension element has a resting tilt (x, y degrees)
+  // that it stays at even when the mouse is away.
+  // Default: slight top-forward tilt so the element looks angled
+  var restingTilt = {
+    x: DIM.restingX !== undefined ? DIM.restingX : -8,   // tilt top toward viewer
+    y: DIM.restingY !== undefined ? DIM.restingY :  6,   // slight left-lean
+  }
+
+  // Per-element state
+  var elementStates = new WeakMap()
+
+  function getState(el) {
+    if (!elementStates.has(el)) {
+      elementStates.set(el, {
+        currentX: restingTilt.x,
+        currentY: restingTilt.y,
+        targetX:  restingTilt.x,
+        targetY:  restingTilt.y,
+        rafId:    null,
+        mouseOver: false,
+      })
+    }
+    return elementStates.get(el)
+  }
+
+  // ── MATH ─────────────────────────────────────────────────────
+  function clamp(val, min, max) { return Math.min(Math.max(val, min), max) }
+
+  function getTiltFromMouse(mouseX, mouseY, rect) {
+    var cx  = rect.left + rect.width  / 2
+    var cy  = rect.top  + rect.height / 2
+    var dx  = (mouseX - cx) / (rect.width  / 2)
+    var dy  = (mouseY - cy) / (rect.height / 2)
+    return {
+      // Mouse drives deviation FROM resting tilt, not absolute
+      rotateX: clamp(restingTilt.x + (-dy * DIM.tiltStrength * 0.6), -DIM.tiltStrength, DIM.tiltStrength),
+      rotateY: clamp(restingTilt.y + ( dx * DIM.tiltStrength * 0.6), -DIM.tiltStrength, DIM.tiltStrength),
+      dx: dx, dy: dy,
+    }
+  }
+
+  // ── SHINE ─────────────────────────────────────────────────────
+  function getOrCreateShine(el) {
+    var shine = el.querySelector('.dimension-shine')
+    if (!shine) {
+      shine           = document.createElement('div')
+      shine.className = 'dimension-shine'
+      el.appendChild(shine)
+    }
+    return shine
+  }
+
+  function updateShine(el, dx, dy, strength) {
+    if (!DIM.shine) return
+    var shine = getOrCreateShine(el)
+    var sx    = 50 + dx * 30
+    var sy    = 50 + dy * 30
+    shine.style.background = 'radial-gradient(circle at ' + sx + '% ' + sy + '%, rgba(255,255,255,' + (DIM.shineOpacity * strength) + ') 0%, rgba(255,255,255,0) 65%)'
+    shine.style.opacity    = '1'
+  }
+
+  // ── PARALLAX LAYERS ───────────────────────────────────────────
+  function updateLayers(el, rotateX, rotateY) {
+    if (!DIM.parallaxLayers) return
+    el.querySelectorAll('.dimension-layer').forEach(function(layer) {
+      var depth = parseFloat(layer.getAttribute('data-depth') || '1')
+      var tz    = (depth / 5) * DIM.parallaxDepth
+      var tx    = -rotateY * depth * 0.5
+      var ty    =  rotateX * depth * 0.5
+      layer.style.transform = 'translateX(' + tx + 'px) translateY(' + ty + 'px) translateZ(' + tz + 'px)'
+    })
+  }
+
+  // ── APPLY TILT ────────────────────────────────────────────────
+  function applyTiltToEl(el, rotateX, rotateY, dx, dy, strength) {
+    strength = strength !== undefined ? strength : 1
+    if (window.gsap) {
+      window.gsap.to(el, {
+        rotateX:  rotateX,
+        rotateY:  rotateY,
+        duration: DIM.duration,
+        ease:     DIM.ease,
+        overwrite: 'auto',
+        transformPerspective: DIM.perspective,
+      })
+    } else {
+      el.style.transform = 'perspective(' + DIM.perspective + 'px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg)'
+    }
+    updateLayers(el, rotateX, rotateY)
+    if (DIM.shine) updateShine(el, dx, dy, strength)
+  }
+
+  // ── APPLY RESTING TILT ────────────────────────────────────────
+  // Called on init and when mouse leaves. Goes back to resting angle, not flat.
+  function applyRestingTilt(el) {
+    var dx = restingTilt.y / DIM.tiltStrength
+    var dy = -restingTilt.x / DIM.tiltStrength
+    applyTiltToEl(el, restingTilt.x, restingTilt.y, dx, dy, 0.3)
+  }
+
+  // ── INIT ELEMENT ──────────────────────────────────────────────
+  function initTiltElement(el) {
+    if (el.dataset.mzDimInit) return
+    el.dataset.mzDimInit = '1'
+
+    // Give parent perspective context without touching html element
+    var parent = el.parentElement
+    if (parent && !parent.classList.contains('dimension-scene')) {
+      parent.style.perspective       = DIM.perspective + 'px'
+      parent.style.perspectiveOrigin = '50% 50%'
+      parent.style.transformStyle    = 'preserve-3d'
+    }
+
+    // Apply resting tilt immediately on init — element is ALWAYS tilted
+    applyRestingTilt(el)
+
+    if (!el.classList.contains('dimension-static')) {
+      el.addEventListener('mousemove', function(e) {
+        var rect = el.getBoundingClientRect()
+        var t    = getTiltFromMouse(e.clientX, e.clientY, rect)
+        applyTiltToEl(el, t.rotateX, t.rotateY, t.dx, t.dy, 1)
+      })
+
+      el.addEventListener('mouseleave', function() {
+        // Return to resting tilt, NOT flat
+        applyRestingTilt(el)
+      })
+
+      // Touch
+      el.addEventListener('touchmove', function(e) {
+        var touch = e.touches[0]
+        var rect  = el.getBoundingClientRect()
+        var t     = getTiltFromMouse(touch.clientX, touch.clientY, rect)
+        applyTiltToEl(el, t.rotateX, t.rotateY, t.dx, t.dy, 1)
+      }, { passive: true })
+
+      el.addEventListener('touchend', function() {
+        applyRestingTilt(el)
+      })
+    }
+  }
+
+  // ── SCROLL DIMENSION ─────────────────────────────────────────
+  function initScrollDimension() {
+    var els = document.querySelectorAll('.dimension-scroll')
+    if (!els.length) return
+
+    if (!window.IntersectionObserver) {
+      els.forEach(function(el) { el.classList.add('is-visible') })
+      return
+    }
+
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible')
+          if (!entry.target.classList.contains('dimension-scroll-repeat')) {
+            io.unobserve(entry.target)
+          }
+        } else {
+          if (entry.target.classList.contains('dimension-scroll-repeat')) {
+            entry.target.classList.remove('is-visible')
+          }
+        }
+      })
+    }, { threshold: 0.15 })
+
+    els.forEach(function(el) { io.observe(el) })
+  }
+
+  // ── SCROLL SCRUB ─────────────────────────────────────────────
+  function initScrubDimension() {
+    if (!window.gsap || !window.ScrollTrigger) return
+
+    document.querySelectorAll('.dimension-scrub').forEach(function(el) {
+      var parent = el.parentElement
+      if (parent) {
+        parent.style.perspective       = DIM.perspective + 'px'
+        parent.style.perspectiveOrigin = '50% 50%'
+      }
+
+      window.gsap.fromTo(el,
+        { rotateX: DIM.scrollZoom, scale: 1 / DIM.scrollScale, opacity: 0.4 },
+        {
+          rotateX:  0,
+          scale:    1,
+          opacity:  1,
+          ease:     'none',
+          scrollTrigger: {
+            trigger: el,
+            start:   'top 90%',
+            end:     'top 30%',
+            scrub:   1.2,
+          }
+        }
+      )
+    })
+  }
+
+  // ── REFRESH ALL ───────────────────────────────────────────────
+  // Re-applies resting tilt to all .dimension elements with current DIM values
+  function refreshAll() {
+    document.querySelectorAll('.dimension[data-mz-dim-init]').forEach(function(el) {
+      // Update parent perspective in case DIM.perspective changed
+      var parent = el.parentElement
+      if (parent && !parent.classList.contains('dimension-scene')) {
+        parent.style.perspective = DIM.perspective + 'px'
+      }
+      applyRestingTilt(el)
+    })
+  }
+
+  // ── SCAN ─────────────────────────────────────────────────────
+  function scanDimension() {
+    document.querySelectorAll('.dimension').forEach(initTiltElement)
+    initScrollDimension()
+    initScrubDimension()
+  }
+
+  function observeDimension() {
+    new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.nodeType !== 1) return
+          if (node.classList && node.classList.contains('dimension')) initTiltElement(node)
+          if (node.querySelectorAll) node.querySelectorAll('.dimension').forEach(initTiltElement)
+        })
+      })
+    }).observe(document.body, { childList: true, subtree: true })
+  }
+
+  // ── PUBLIC API ────────────────────────────────────────────────
+  window.MizumiDimension = {
+    version: '0.1.0',
+
+    // Manually set tilt (degrees)
+    setTilt: function(el, rotateX, rotateY) {
+      var dx = rotateY / DIM.tiltStrength
+      var dy = -rotateX / DIM.tiltStrength
+      applyTiltToEl(el, rotateX, rotateY, dx, dy, 1)
+    },
+
+    // Set resting tilt (the angle it stays at when no interaction)
+    setRestingTilt: function(x, y) {
+      restingTilt.x = x
+      restingTilt.y = y
+      refreshAll()
+    },
+
+    // Reset to resting tilt
+    reset: function(el) { applyRestingTilt(el) },
+
+    // Re-scan DOM
+    refresh: function() { scanDimension() },
+
+    // Live-update a config value (used by DevTools HUD knobs)
+    setConfig: function(key, value) {
+      if (key === 'restingX') { restingTilt.x = value; refreshAll(); return }
+      if (key === 'restingY') { restingTilt.y = value; refreshAll(); return }
+      if (key in DIM) {
+        DIM[key] = value
+        // Keys that need a full refresh (perspective requires parent style update)
+        if (key === 'perspective' || key === 'tiltStrength') refreshAll()
+        console.log('🌊 MizumiDimension: ' + key + ' = ' + value)
+      }
+    },
+
+    getConfig: function() {
+      return Object.assign({}, DIM, { restingX: restingTilt.x, restingY: restingTilt.y })
+    },
+
+    disable: function() {
+      document.querySelectorAll('.dimension[data-mz-dim-init]').forEach(function(el) {
+        if (window.gsap) window.gsap.set(el, { clearProps: 'all' })
+        else el.style.transform = ''
+        delete el.dataset.mzDimInit
+      })
+      window.__MIZUMI_DIMENSION__ = false
+    }
+  }
+
+  // ── BOOT ─────────────────────────────────────────────────────
+  function dimInit() {
+    if (window.requestIdleCallback) {
+      requestIdleCallback(function() { scanDimension(); observeDimension() }, { timeout: 500 })
+    } else {
+      setTimeout(function() { scanDimension(); observeDimension() }, 100)
+    }
+    console.log('🌊 Mizumi Dimension ready')
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', dimInit)
+  } else {
+    dimInit()
   }
 })()
 `

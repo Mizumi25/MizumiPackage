@@ -1847,5 +1847,12 @@ export default {
       999:  5.5,
       9999: 6,
     },
+    dimension: {
+    tiltStrength:  15,
+    perspective:   800,
+    scrollZoom:    20,
+    shine:         true,
+    parallaxLayers: true,
+  }
   },
 }

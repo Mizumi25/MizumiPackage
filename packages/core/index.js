@@ -110,6 +110,10 @@ class Mizumi {
     css.push(this.depthEngine.generateDepthCSS(this.config.tokens))
     css.push('')
 
+    css.push('/* ===== DIMENSION — 2.5D TILT ===== */')
+    css.push(this.depthEngine.generateDimensionCSS())
+    css.push('')
+
     return css.join('\n')
   }
 
